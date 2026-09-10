@@ -31,20 +31,7 @@ jobs:
       - name: Lint
         run: make lint-backend
 
-      - name: Install Ollama
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-
-      - name: Start Ollama and Pull Model
-        run: |
-          ollama serve &
-          # Wait for Ollama to start up
-          sleep 5
-          ollama pull qwen2:0.5b
-
       - name: Test
-        env:
-          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           go test -p 1 ./... -coverprofile=coverage.raw
           grep -vE "(mock|generated|cmd/main.go)" coverage.raw > coverage.out
