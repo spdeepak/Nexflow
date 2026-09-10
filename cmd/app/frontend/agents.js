@@ -379,6 +379,11 @@ async function submitCreateSubAgent(parentId) {
 async function showCreateAgentModal() {
     modelOptions = await window.go.application.App.GetModelOptions();
 
+    if (modelOptions.length === 0) {
+        showToast('Populate Model credentials first');
+        return;
+    }
+
     const body = `
         <div class="form-group">
             <label for="agent-name">Name *</label>

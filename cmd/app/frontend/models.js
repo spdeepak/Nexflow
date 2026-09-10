@@ -12,7 +12,7 @@ function renderModelList(container) {
     let html = `
         <div class="page-header">
             <h1>Models</h1>
-            <button class="btn btn-primary" onclick="showCreateModelModal()">Create Model</button>
+            <button class="btn btn-primary" onclick="showCreateModelModal()">Add Model Credential</button>
         </div>`;
 
     if (modelListData.length === 0) {
@@ -135,7 +135,7 @@ function showCreateModelModal() {
             <input type="password" id="mc-key" placeholder="API key">
         </div>`;
 
-    showModal('Create Model Credential', body, submitCreateModel);
+    showModal('Add Model Credential', body, submitCreateModel, 'Add Model');
 }
 
 function showEditModelModal(modelId) {

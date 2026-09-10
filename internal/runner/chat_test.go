@@ -1,7 +1,10 @@
+//go:build integration
+
 package runner
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,8 +21,10 @@ func TestServiceRun_StreamsSubAgentEvents(t *testing.T) {
 	fixture := newTestFixture(t)
 	user := fixture.createUser()
 
+	ollama_key, _ := os.LookupEnv("OLLAMA_API_KEY")
+
 	model, err := fixture.modelService.CreateUserModelCredential(context.Background(), user.ID, schema.ModelCredentialCreate{
-		ApiKey:      "",
+		ApiKey:      ollama_key,
 		BaseUrl:     "https://localhost:11434/v1",
 		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
 		Provider:    "ollama",

@@ -29,14 +29,6 @@ func normalizeBaseURL(raw string) string {
 	return raw
 }
 
-// deref returns the value pointed to by s, or "" when nil.
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
-
 // extractText pulls plain text parts out of an ADK event's content.
 func extractText(event *session.Event) string {
 	if event == nil || event.Content == nil {

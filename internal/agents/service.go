@@ -123,7 +123,7 @@ func (s *service) GetAgent(ctx context.Context, id uuid.UUID) (schema.Agent, err
 	if agent.GlobalInstruction.Valid {
 		apiAgent.GlobalInstruction = &agent.GlobalInstruction.String
 	}
-	if &agent.ParentAgentID != nil {
+	if agent.ParentAgentID.Time() != 0 {
 		apiAgent.ParentAgentID = &agent.ParentAgentID
 	}
 	configJson, err := agent.ConfigJson.MarshalJSON()
