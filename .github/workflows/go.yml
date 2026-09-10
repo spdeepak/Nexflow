@@ -1,0 +1,63 @@
+name: Nexflow
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-and-test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26
+          cache: true
+
+      - name: Run code generation
+        run: make generate
+
+      - name: Build
+        run: go build ./...
+
+      - name: Lint
+        run: make lint-backend
+
+      - name: Test
+        run: |
+          go test -p 1 ./... -coverprofile=coverage.raw
+          grep -vE "(mock|generated|cmd/main.go)" coverage.raw > coverage.out
+
+#      - name: Upload to Codecov
+#        uses: codecov/codecov-action@v4
+#        with:
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          files: apps/server/coverage.out
+
+      - name: Delete old workflow runs (keep last 2)
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          echo "Deleting previous workflow runs for all workflows..."
+          gh api --paginate "repos/${{ github.repository }}/actions/workflows" -q '.workflows[].name' | while read -r wf; do
+            echo "Processing workflow: $wf"
+            gh run list \
+              --workflow "$wf" \
+              --limit 100 \
+              --json databaseId,createdAt \
+              -q 'sort_by(.createdAt) | reverse | .[2:] | .[].databaseId' |
+            while read -r run_id; do
+              echo "Deleting run $run_id from $wf"
+              gh run delete "$run_id" --repo "${{ github.repository }}" || echo "Skipped $run_id"
+            done
+          done
