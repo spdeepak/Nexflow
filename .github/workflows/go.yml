@@ -37,7 +37,7 @@ jobs:
           model: ''
 
       - name: Test
-      - env:
+        env:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           go test -p 1 ./... -coverprofile=coverage.raw
