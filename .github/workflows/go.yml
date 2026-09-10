@@ -31,7 +31,14 @@ jobs:
       - name: Lint
         run: make lint-backend
 
+      - name: Set up Ollama and Pull Model
+        uses: pydantic/ollama-action@v3
+        with:
+          model: ''
+
       - name: Test
+      - env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           go test -p 1 ./... -coverprofile=coverage.raw
           grep -vE "(mock|generated|cmd/main.go)" coverage.raw > coverage.out
