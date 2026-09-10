@@ -85,13 +85,16 @@ func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.
 		Transport:           *arg.Transport,
 		Command:             marshalStringSlice(arg.Command),
 		Args:                marshalStringSlice(arg.Args),
-		AuthType:            *arg.AuthType,
 		AuthConfig:          util.ToRawMessage[schema.MCPUpdateAuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
 		RequireConfirmation: util.GetSQLNullBool(arg.RequireConfirmation),
 		ConfirmationRules:   util.ToRawMessage[schema.MCPUpdateConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            util.GetSQLNullBool(arg.IsActive),
 		ID:                  id,
+	}
+
+	if arg.AuthType != nil {
+		updateMCPServerParams.AuthType = *arg.AuthType
 	}
 
 	mcpServer, err := s.querier.UpdateMCPServer(ctx, updateMCPServerParams)

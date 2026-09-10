@@ -28,6 +28,9 @@ async function renderView() {
             case 'models':
                 await renderModels(container);
                 break;
+            case 'mcp':
+                await renderMCPs(container);
+                break;
             case 'chat':
                 await renderChat(container);
                 break;
@@ -110,7 +113,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderUser();
 
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved && ['agents', 'skill', 'models', 'chat'].includes(saved)) {
+    if (saved && ['agents', 'skill', 'models', 'chat', 'mcp'].includes(saved)) {
         currentView = saved;
     }
     switchView(currentView);

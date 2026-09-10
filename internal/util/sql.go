@@ -37,8 +37,11 @@ func ToRawMessage[T any](cfg *T) json.RawMessage {
 	if cfg == nil {
 		return json.RawMessage{}
 	}
-	raw, err := json.Marshal(cfg)
+	raw, err := json.Marshal(*cfg)
 	if err != nil {
+		return json.RawMessage{}
+	}
+	if string(raw) == "null" {
 		return json.RawMessage{}
 	}
 	return raw
