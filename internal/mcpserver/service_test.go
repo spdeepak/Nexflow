@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/adk/v2/agent/llmagent"
 
 	"github.com/spdeepak/nexflow/internal/agentmcp"
 	"github.com/spdeepak/nexflow/internal/agents"
@@ -79,23 +78,6 @@ func (tf *testFixture) createUser() schema.User {
 	return user
 }
 
-func (tf *testFixture) createAppModel() schema.ModelCredential {
-	tf.test.Helper()
-	arg := schema.ModelCredentialCreate{
-		ApiKey:      "schema-key",
-		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
-		Provider:    "ollama",
-		ModelName:   "minimax-m3:cloud",
-		Scope:       enums.CredentialScopeApp,
-		Title:       "test ollama minimax",
-	}
-	model, err := tf.modelService.CreateAppModelCredential(context.Background(), arg)
-	require.NoError(tf.test, err)
-	require.NotNil(tf.test, model)
-	return model
-}
-
 func (tf *testFixture) createMCPServer() schema.MCP {
 	tf.test.Helper()
 	user := tf.createUser()
@@ -130,31 +112,6 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 	require.Equal(tf.test, mcpCreate.Transport, createdMCP.Transport)
 	require.Equal(tf.test, mcpCreate.UserID, createdMCP.UserID)
 	return createdMCP
-}
-
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) agents.Agent {
-	tf.test.Helper()
-	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
-		Name:              "Test agent",
-		Description:       "Test agent description",
-		Instruction:       new("Test agent instruction"),
-		GlobalInstruction: new("Test agent global instruction"),
-		Mode:              llmagent.ModeChat,
-		ModelName:         "minimax-m3:cloud",
-		ModelCredentialID: model.ID,
-		CredentialSource:  enums.CredentialSourceAuto,
-	})
-	require.NoError(tf.test, err)
-	require.NotEmpty(tf.test, agent)
-	require.Equal(tf.test, "Test agent", agent.Name)
-	require.Equal(tf.test, "Test agent description", agent.Description.String)
-	require.Equal(tf.test, "Test agent instruction", agent.Instruction.String)
-	require.Equal(tf.test, "Test agent global instruction", agent.GlobalInstruction.String)
-	require.Equal(tf.test, llmagent.ModeChat, agent.Mode)
-	require.Equal(tf.test, "minimax-m3:cloud", agent.ModelName.String)
-	require.Equal(tf.test, model.ID, agent.ModelCredentialID)
-	require.Equal(tf.test, enums.CredentialSourceAuto, agent.CredentialSource)
-	return agent
 }
 
 func TestCreateMCPServer_OK(t *testing.T) {
