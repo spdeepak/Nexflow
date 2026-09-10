@@ -1,0 +1,1411 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "User": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "externalId",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "externalId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ModelCredentialCreate": {
+      "type": "object",
+      "required": [
+        "title",
+        "provider",
+        "modelName",
+        "apiKey",
+        "baseUrl",
+        "scope"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 20,
+          "examples": [
+            "Production key"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic",
+            "google",
+            "ollama"
+          ]
+        },
+        "modelName": {
+          "type": "string",
+          "examples": [
+            "gpt-4o"
+          ]
+        },
+        "apiKey": {
+          "type": "string",
+          "format": "password",
+          "description": "Plaintext key — encrypted server-side, never stored or returned"
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "Override for self-hosted/proxy endpoints"
+        },
+        "scope": {
+          "type": "string",
+          "description": "Credential scope",
+          "goJSONSchema": {
+            "type": "enums.CredentialScope",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "extraConfig": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "ModelCredentialUpdate": {
+      "type": "object",
+      "required": [
+        "isActive"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "apiKey": {
+          "type": "string",
+          "format": "password",
+          "description": "New key (rotates version, old key overwritten)"
+        },
+        "baseUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "extraConfig": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ModelCredential": {
+      "type": "object",
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "provider",
+        "modelName",
+        "baseUrl",
+        "scope",
+        "keyVersion",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "provider": {
+          "type": "string"
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "description": "Credential scope",
+          "goJSONSchema": {
+            "type": "enums.CredentialScope",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "keyVersion": {
+          "type": "integer"
+        },
+        "extraConfig": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "apiKey / apiKeyCipher are never included"
+    },
+    "AgentCreate": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "mode",
+        "modelName",
+        "modelCredentialId",
+        "credentialSource"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique within its parent scope"
+        },
+        "description": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "globalInstruction": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "llmagent.Mode",
+            "imports": [
+              "google.golang.org/adk/v2/agent/llmagent"
+            ]
+          }
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "modelCredentialId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "parentAgentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "credentialSource": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.CredentialSource",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "modelConfig": {
+          "type": "object",
+          "goJSONSchema": {
+            "type": "genai.GenerateContentConfig",
+            "imports": [
+              "google.golang.org/genai"
+            ]
+          }
+        },
+        "configJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "Full llmagent.Config for replay/deploy"
+        }
+      }
+    },
+    "AgentUpdate": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "globalInstruction": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "llmagent.Mode",
+            "imports": [
+              "google.golang.org/adk/v2/agent/llmagent"
+            ]
+          }
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "modelCredentialId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "credentialSource": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.CredentialSource",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "modelConfig": {
+          "type": "object",
+          "goJSONSchema": {
+            "type": "genai.GenerateContentConfig",
+            "imports": [
+              "google.golang.org/genai"
+            ]
+          }
+        },
+        "configJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Agent": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "instruction",
+        "mode",
+        "modelName",
+        "modelCredentialId",
+        "credentialSource",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "parentAgentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "globalInstruction": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "llmagent.Mode",
+            "imports": [
+              "google.golang.org/adk/v2/agent/llmagent"
+            ]
+          }
+        },
+        "modelName": {
+          "type": "string"
+        },
+        "modelCredentialId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "credentialSource": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.CredentialSource",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "modelConfig": {
+          "type": "object",
+          "goJSONSchema": {
+            "type": "genai.GenerateContentConfig",
+            "imports": [
+              "google.golang.org/genai"
+            ]
+          }
+        },
+        "configJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "position": {
+          "type": "integer"
+        },
+        "subAgents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Agent"
+          },
+          "description": "Populated when includeChildren=true on GET"
+        }
+      }
+    },
+    "SkillCreate": {
+      "type": "object",
+      "required": [
+        "title",
+        "contentType",
+        "scope"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.SkillContentType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          },
+          "default": "text"
+        },
+        "content": {
+          "type": "string",
+          "description": "Inline body"
+        },
+        "storageUri": {
+          "type": "string",
+          "description": "External location if not inline"
+        },
+        "scope": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.SkillScope",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "metadata": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "content"
+          ]
+        },
+        {
+          "required": [
+            "storageUri"
+          ]
+        }
+      ],
+      "description": "Either content or storageUri is required"
+    },
+    "SkillUpdate": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.SkillContentType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "content": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storageUri": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "metadata": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "Skill": {
+      "type": "object",
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "contentType",
+        "scope",
+        "metadata",
+        "isActive",
+        "createdAt",
+        "updatedAt",
+        "agentCount"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "scope": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.SkillScope",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.SkillContentType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "content": {
+          "type": "string"
+        },
+        "storageUri": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "agentCount": {
+          "type": "integer",
+          "description": "Number of agents this skill is attached to (computed on list)"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "content"
+          ]
+        },
+        {
+          "required": [
+            "storageUri"
+          ]
+        }
+      ]
+    },
+    "SessionCreate": {
+      "type": "object",
+      "required": [
+        "userId",
+        "appName",
+        "rootAgentId"
+      ],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "appName": {
+          "type": "string"
+        },
+        "rootAgentId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        }
+      }
+    },
+    "Session": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "appName": {
+          "type": "string"
+        },
+        "rootAgentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "lastUpdate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "invocationId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "seq": {
+          "type": "integer",
+          "goJSONSchema": {
+            "type": "int64"
+          }
+        },
+        "branch": {
+          "type": "string"
+        },
+        "isolationScope": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string",
+          "description": "Agent name or \"user\""
+        },
+        "role": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.EventRole",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "contentJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "ADK message parts (text, thought, functionCall, ...)"
+        },
+        "actionsJson": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "EventActions"
+        },
+        "isPartial": {
+          "type": "boolean"
+        },
+        "isFinal": {
+          "type": "boolean"
+        },
+        "tokenUsage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "{ promptTokens, completionTokens, cachedTokens }"
+        },
+        "outputJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "RunCreate": {
+      "type": "object",
+      "required": [
+        "message"
+      ],
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "The user's message / prompt for this invocation"
+        }
+      }
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "invocationId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "rootAgentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "status": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.RunStatus",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "description": "Final response events for this run (populated on GET)"
+        }
+      }
+    },
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "filename": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "agentName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "storageUri": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "contentType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "downloadUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Pre-signed URL if available"
+        }
+      }
+    },
+    "ToolCall": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "agentName": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "arguments": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "resultJson": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "status": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.ToolCallStatus",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "durationMs": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "runId"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "runId": {
+          "type": [
+            "string"
+          ],
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "interrupted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ModelOption": {
+      "type": "object",
+      "required": [
+        "value",
+        "label"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "MCP": {
+      "type": "object",
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "endpoint",
+        "transport",
+        "requireConfirmation",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.McpTransport",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.McpAuthType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "authConfig": {
+          "type": "object"
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requireConfirmation": {
+          "type": "boolean",
+          "default": false
+        },
+        "confirmationRules": {
+          "type": "object"
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "MCPCreate": {
+      "type": "object",
+      "required": [
+        "userId",
+        "name",
+        "endpoint"
+      ],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "goJSONSchema": {
+            "type": "uuid.UUID",
+            "imports": [
+              "github.com/google/uuid"
+            ]
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "default": "streamable_http",
+          "goJSONSchema": {
+            "type": "enums.McpTransport",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.McpAuthType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "authConfig": {
+          "type": "object"
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requireConfirmation": {
+          "type": "boolean",
+          "default": false
+        },
+        "confirmationRules": {
+          "type": "object"
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "MCPUpdate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "transport": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.McpTransport",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authType": {
+          "type": "string",
+          "goJSONSchema": {
+            "type": "enums.McpAuthType",
+            "imports": [
+              "github.com/spdeepak/nexflow/internal/enums"
+            ]
+          }
+        },
+        "authConfig": {
+          "type": "object"
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requireConfirmation": {
+          "type": "boolean"
+        },
+        "confirmationRules": {
+          "type": "object"
+        },
+        "isActive": {
+          "type": "boolean"
+        }
+      }
+    },
+    "AgentDetail": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/Agent" }
+      ],
+      "properties": {
+        "mcps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MCP" },
+          "description": "MCP servers linked to this agent"
+        },
+        "skills": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Skill" },
+          "description": "Skills linked to this agent"
+        }
+      }
+    }
+  }
+}

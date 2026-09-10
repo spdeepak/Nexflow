@@ -1,0 +1,23 @@
+{
+  "model": {
+    "name": "gemini-1.5-pro",
+    "provider": "google"
+  },
+  "dbconfig": {
+    "host": "localhost",
+    "port": "5432",
+    "dbName": "app.db",
+    "username": "admin",
+    "password": "securepassword",
+    "sslMode": "disable",
+    "timeout": "10s",
+    "maxRetry": 3,
+    "connectTimeout": "5s",
+    "statementTimeout": "30s",
+    "maxOpenConns": 1,
+    "maxIdleConns": 1,
+    "connMaxLifetime": "1h",
+    "connMaxIdleTime": "30m",
+    "healthCheckPeriod": "1m"
+  }
+}

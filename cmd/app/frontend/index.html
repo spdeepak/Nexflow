@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexflow</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <div class="sidebar-header">Nexflow</div>
+            <nav>
+                <button class="sidebar-btn" data-view="models" onclick="switchView('models')">Models</button>
+                <button class="sidebar-btn active" data-view="agents" onclick="switchView('agents')">Agents</button>
+                <button class="sidebar-btn" data-view="skill" onclick="switchView('skill')">Skills</button>
+                <button class="sidebar-btn" data-view="chat" onclick="switchView('chat')">Chat</button>
+            </nav>
+            <div class="sidebar-footer">
+                <span class="user-avatar" id="user-avatar"></span>
+                <span class="user-name" id="user-name"></span>
+            </div>
+        </aside>
+        <main id="main-content">
+            <div id="view-container"></div>
+        </main>
+    </div>
+
+    <!-- Create Agent Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script src="agents.js"></script>
+    <script src="skill.js"></script>
+    <script src="models.js"></script>
+    <script src="markdown.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+all: false
+dir: '{{.InterfaceDir}}'
+filename: "{{.InterfaceName | lower}}_mock.gen.go"
+force-file-write: true
+formatter: goimports
+include-auto-generated: true
+log-level: warn
+structname: "Mock{{.InterfaceName}}"
+pkgname: "{{.SrcPackageName}}"
+recursive: false
+require-template-schema-exists: false #This has to be set to false since we need interface of sqlc generated code
+template: testify
+packages:
+  github.com/spdeepak/nexflow/internal/modelcredentials:
+    interfaces:
+      Querier:

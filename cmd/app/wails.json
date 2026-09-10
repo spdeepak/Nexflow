@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Nexflow",
+  "outputfilename": "nexflow",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "Deepak"
+  },
+  "info": {
+    "companyName": "Nexflow",
+    "productName": "Nexflow",
+    "productVersion": "1.0.0",
+    "copyright": "2026 Nexflow",
+    "comments": "Multi-Agent Management Console"
+  }
+}

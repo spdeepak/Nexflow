@@ -1,0 +1,309 @@
+version: "2"
+
+overrides:
+  go:
+    overrides:
+
+      # device
+      - column: "device.id"
+        go_type: "github.com/google/uuid.UUID"
+
+      # users
+      - column: "users.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "users.created_at"
+        go_type: "time.Time"
+
+      # model_credentials
+      - column: "model_credentials.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "model_credentials.user_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "model_credentials.scope"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.CredentialScope"
+      - column: "model_credentials.created_at"
+        go_type: "time.Time"
+      - column: "model_credentials.updated_at"
+        go_type: "time.Time"
+      - column: "model_credentials.is_active"
+        go_type: "bool"
+
+      # agents
+      - column: "agents.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agents.parent_agent_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agents.mode"
+        go_type: "google.golang.org/adk/v2/agent/llmagent.Mode"
+      - column: "agents.model_credential_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agents.credential_source"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.CredentialSource"
+      - column: "agents.created_at"
+        go_type: "time.Time"
+      - column: "agents.updated_at"
+        go_type: "time.Time"
+
+      # sessions
+      - column: "sessions.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "sessions.user_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "sessions.root_agent_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "sessions.last_update"
+        go_type: "time.Time"
+      - column: "sessions.created_at"
+        go_type: "time.Time"
+
+      # events
+      - column: "events.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "events.session_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "events.invocation_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "events.role"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.EventRole"
+      - column: "events.created_at"
+        go_type: "time.Time"
+
+      # session_state
+      - column: "session_state.session_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "session_state.updated_at"
+        go_type: "time.Time"
+
+      # artifacts
+      - column: "artifacts.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "artifacts.session_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "artifacts.created_at"
+        go_type: "time.Time"
+
+      # runs
+      - column: "runs.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "runs.session_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "runs.invocation_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "runs.root_agent_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "runs.status"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.RunStatus"
+      - column: "runs.started_at"
+        go_type: "time.Time"
+      - column: "runs.finished_at"
+        go_type:
+          import: "database/sql"
+          type: "NullTime"
+
+      # tool_calls
+      - column: "tool_calls.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "tool_calls.event_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "tool_calls.run_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "tool_calls.status"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.ToolCallStatus"
+      - column: "tool_calls.created_at"
+        go_type: "time.Time"
+
+      # skills
+      - column: "skills.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "skills.user_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "skills.scope"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.SkillScope"
+      - column: "skills.content_type"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.SkillContentType"
+      - column: "skills.created_at"
+        go_type: "time.Time"
+      - column: "skills.updated_at"
+        go_type: "time.Time"
+
+      # agent_skills
+      - column: "agent_skills.agent_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agent_skills.skill_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agent_skills.created_at"
+        go_type: "time.Time"
+
+      # mcp_server
+      - column: "mcp_server.id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "mcp_server.user_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "mcp_server.transport"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.McpTransport"
+      - column: "mcp_server.auth_type"
+        go_type: "github.com/spdeepak/nexflow/internal/enums.McpAuthType"
+      - column: "mcp_server.created_at"
+        go_type: "time.Time"
+      - column: "mcp_server.updated_at"
+        go_type: "time.Time"
+      - column: "mcp_server.command"
+        go_type: "string"
+      - column: "mcp_server.args"
+        go_type: "string"
+      - column: "mcp_server.allowed_tools"
+        go_type: "string"
+
+      # agent_mcp_server
+      - column: "agent_mcp_server.mcp_server_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "agent_mcp_server.agent_id"
+        go_type: "github.com/google/uuid.UUID"
+
+
+sql:
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/users.sql"
+    engine: "sqlite"
+    gen:
+      go: &common_go
+        package: "users"
+        out: "./internal/users"
+        output_files_suffix: ".gen.go"
+        output_db_file_name: "db.gen.go"
+        output_models_file_name: "models.gen.go"
+        output_querier_file_name: "querier.gen.go"
+        emit_interface: true
+        emit_json_tags: true
+        sql_package: "database/sql"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/device.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "device"
+        out: "./internal/device"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/model_credentials.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "modelcredentials"
+        out: "./internal/modelcredentials"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/agents.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "agents"
+        out: "./internal/agents"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/sessions.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "sessions"
+        out: "./internal/sessions"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/events.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "events"
+        out: "./internal/events"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/session_state.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "sessionstate"
+        out: "./internal/sessionstate"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/artifacts.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "artifacts"
+        out: "./internal/artifacts"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/runs.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "runs"
+        out: "./internal/runs"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/tool_calls.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "toolcalls"
+        out: "./internal/toolcalls"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/skill.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "skills"
+        out: "./internal/skills"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/agent_skill.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "agentskills"
+        out: "./internal/agentskills"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/mcp_server.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "mcpserver"
+        out: "./internal/mcpserver"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/agent_mcp.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "agentmcp"
+        out: "./internal/agentmcp"
