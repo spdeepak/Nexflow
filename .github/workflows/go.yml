@@ -36,11 +36,11 @@ jobs:
           go test -p 1 ./... -coverprofile=coverage.raw
           grep -vE "(mock|generated|cmd/main.go)" coverage.raw > coverage.out
 
-#      - name: Upload to Codecov
-#        uses: codecov/codecov-action@v4
-#        with:
-#          token: ${{ secrets.CODECOV_TOKEN }}
-#          files: apps/server/coverage.out
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
 
       - name: Delete old workflow runs (keep last 2)
         if: success()
