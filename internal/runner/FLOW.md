@@ -82,7 +82,7 @@ Lifecycle ("Agent started/finished execution") is signalled by ADK's
 | **App bindings** | `../application` | `CreateSession`, `SendMessageSession`, `ListSessions`, `ListEvents`, `GetRun` |
 | **Chat service** | `internal/runner/chat.go` | `Run`, `CreateSession`, `GetSession`, `ListSessions`, `DeleteSession`, `ListEvents` |
 | **Session store** | `internal/sessions/service.go` | `AppendEvent`, `Create`, `Get` |
-| **Runner** | `internal/runner/runner.go` | `Run`, `runStage`, `buildLLMAgent`, `buildLLMAgentWithSubAgents`, `resolveModel` |
+| **Runner** | `internal/runner/runner.go` | `Run`, `runStage`, `buildSubAgent`, `buildRootAgentWithSubAgents`, `resolveModel` |
 | **Agents service** | `internal/agents/service.go` | `GetAgent`, `ListAgentChildren`, `ListRootAgents` |
 
 For unit tests, mock the sqlc queriers (they're interfaces) and test the

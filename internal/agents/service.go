@@ -13,15 +13,17 @@ import (
 	"github.com/spdeepak/nexflow/internal/agentmcp"
 	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/errors"
+	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/util"
 	"github.com/spdeepak/nexflow/schema"
 )
 
 type (
 	service struct {
-		querier           Querier
-		agentSkillService agentskills.Service
-		agentMCPService   agentmcp.Service
+		querier                Querier
+		agentSkillService      agentskills.Service
+		agentMCPService        agentmcp.Service
+		modelCredentialService modelcredentials.Service
 	}
 
 	Service interface {
@@ -38,11 +40,12 @@ type (
 	}
 )
 
-func NewService(querier Querier, agentSkillService agentskills.Service, agentMCPService agentmcp.Service) Service {
+func NewService(querier Querier, agentSkillService agentskills.Service, agentMCPService agentmcp.Service, modelCredentialService modelcredentials.Service) Service {
 	return &service{
-		querier:           querier,
-		agentSkillService: agentSkillService,
-		agentMCPService:   agentMCPService,
+		querier:                querier,
+		agentSkillService:      agentSkillService,
+		agentMCPService:        agentMCPService,
+		modelCredentialService: modelCredentialService,
 	}
 }
 
@@ -141,7 +144,7 @@ func (s *service) GetAgentDetail(ctx context.Context, id uuid.UUID) (schema.Agen
 		return schema.AgentDetail{}, err
 	}
 
-	children, err := s.GetSubAgents(ctx, id)
+	subAgents, err := s.GetSubAgents(ctx, id)
 	if err != nil {
 		return schema.AgentDetail{}, err
 	}
@@ -180,7 +183,7 @@ func (s *service) GetAgentDetail(ctx context.Context, id uuid.UUID) (schema.Agen
 		ParentAgentID:     agent.ParentAgentID,
 		Position:          agent.Position,
 		Skills:            agentSkills,
-		SubAgents:         children,
+		SubAgents:         subAgents,
 		UpdatedAt:         agent.UpdatedAt,
 	}
 

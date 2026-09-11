@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/adk/v2/model/openaimodel"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/skilltoolset"
 	"google.golang.org/genai"
 
 	adkagent "google.golang.org/adk/v2/agent"
@@ -17,6 +19,7 @@ import (
 	"google.golang.org/adk/v2/session"
 
 	"github.com/spdeepak/nexflow/internal/agents"
+	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/schema"
@@ -68,6 +71,7 @@ type (
 		agentService            agents.Service
 		modelCredentialsService modelcredentials.Service
 		sessionService          session.Service
+		skillsService           agentskills.Service
 		userID                  uuid.UUID
 		appName                 string
 	}
@@ -110,13 +114,13 @@ func (r *runner) Run(ctx context.Context, req Request, onEvent OnEventFunc, opts
 
 	adkSubAgents := make([]adkagent.Agent, len(subAgents))
 	for index, sub := range subAgents {
-		adkSubAgents[index], err = r.buildLLMAgent(ctx, sub)
+		adkSubAgents[index], err = r.buildSubAgent(ctx, sub)
 		if err != nil {
 			return err
 		}
 	}
 
-	rootADKAgent, err := r.buildLLMAgentWithSubAgents(ctx, rootAgent, adkSubAgents)
+	rootADKAgent, err := r.buildRootAgentWithSubAgents(ctx, rootAgent, adkSubAgents)
 	if err != nil {
 		return err
 	}
@@ -252,11 +256,16 @@ func (r *runner) runStage(ctx context.Context, adkAgent adkagent.Agent, sessionI
 	return final, nil
 }
 
-// buildLLMAgent resolves the agent's model and constructs an ADK llmagent,
+// buildSubAgent resolves the agent's model and constructs an ADK llmagent,
 // deriving the agent's Mode, description and LLM generation config from the
 // configuration stored on the agent.
-func (r *runner) buildLLMAgent(ctx context.Context, apiAgent schema.Agent) (adkagent.Agent, error) {
+func (r *runner) buildSubAgent(ctx context.Context, apiAgent schema.Agent) (adkagent.Agent, error) {
 	agentModel, err := r.resolveModel(ctx, apiAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	skills, err := r.resolveSkills(ctx, apiAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +277,9 @@ func (r *runner) buildLLMAgent(ctx context.Context, apiAgent schema.Agent) (adka
 		Model:                 agentModel,
 		Mode:                  apiAgent.Mode,
 		GenerateContentConfig: apiAgent.ModelConfig,
+		Toolsets: []tool.Toolset{
+			skills,
+		},
 	}
 
 	if apiAgent.GlobalInstruction != nil && *apiAgent.GlobalInstruction != "" {
@@ -281,10 +293,14 @@ func (r *runner) buildLLMAgent(ctx context.Context, apiAgent schema.Agent) (adka
 	return agent, nil
 }
 
-// buildLLMAgentWithSubAgents is like buildLLMAgent but wires the given
-// sub-agents into the root agent's config so ADK can delegate to them.
-func (r *runner) buildLLMAgentWithSubAgents(ctx context.Context, rootAgent schema.Agent, adkSubAgents []adkagent.Agent) (adkagent.Agent, error) {
+// buildRootAgentWithSubAgents is like buildSubAgent but wires the given sub-agents into the root agent's config so ADK can delegate to them.
+func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent schema.Agent, adkSubAgents []adkagent.Agent) (adkagent.Agent, error) {
 	agentModel, err := r.resolveModel(ctx, rootAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	skills, err := r.resolveSkills(ctx, rootAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -296,6 +312,9 @@ func (r *runner) buildLLMAgentWithSubAgents(ctx context.Context, rootAgent schem
 		Model:                 agentModel,
 		Mode:                  rootAgent.Mode,
 		GenerateContentConfig: rootAgent.ModelConfig,
+		Toolsets: []tool.Toolset{
+			skills,
+		},
 	}
 
 	if len(adkSubAgents) > 0 {
@@ -335,7 +354,7 @@ func (r *runner) buildRootAgentWithDelegationDirective(ctx context.Context, root
 		g := *clone.GlobalInstruction + directive
 		clone.GlobalInstruction = &g
 	}
-	return r.buildLLMAgentWithSubAgents(ctx, clone, adkSubAgents)
+	return r.buildRootAgentWithSubAgents(ctx, clone, adkSubAgents)
 }
 
 // resolveModel picks a model for the given agent spec based on its credential
@@ -376,6 +395,42 @@ func (r *runner) resolveModel(ctx context.Context, apiAgent schema.Agent) (model
 	// Transparently retry vacuous generations (empty/no text/tool content) that
 	// local providers intermittently return instead of a real response.
 	return withGenerateRetry(llm, defaultGenerateRetries), nil
+}
+
+func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.Agent) (*skilltoolset.SkillToolset, error) {
+	skills, err := r.skillsService.ListAgentSkill(ctx, apiAgent.ID)
+	if err != nil {
+		return nil, err
+	}
+	inMemorySkills := make([]InMemorySkill, len(skills))
+	for index, skill := range skills {
+		inMemorySkills[index] = InMemorySkill{
+			Name:         skill.Title,
+			Description:  *skill.Content,
+			Instructions: *skill.Content,
+		}
+	}
+	return skilltoolset.New(ctx, skilltoolset.Config{
+		Source: NewStringToolSet(inMemorySkills...),
+	})
+}
+
+func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.Agent) (*skilltoolset.SkillToolset, error) {
+	skills, err := r.skillsService.ListAgentSkill(ctx, apiAgent.ID)
+	if err != nil {
+		return nil, err
+	}
+	inMemorySkills := make([]InMemorySkill, len(skills))
+	for index, skill := range skills {
+		inMemorySkills[index] = InMemorySkill{
+			Name:         skill.Title,
+			Description:  *skill.Content,
+			Instructions: *skill.Content,
+		}
+	}
+	return skilltoolset.New(ctx, skilltoolset.Config{
+		Source: NewStringToolSet(inMemorySkills...),
+	})
 }
 
 func (r *runner) getModelCredential(ctx context.Context, apiAgent schema.Agent) (modelcredentials.ModelCredential, error) {
