@@ -14,7 +14,7 @@ let chatReplayTimer = null;
 
 async function renderChat(container) {
     chatSessionsData = await window.go.application.App.ListSessions();
-    chatAgentList = await window.go.application.App.GetAgents();
+    chatAgentList = await window.go.application.App.GetRootAgents();
 
     container.innerHTML = `
         <div class="page-header">

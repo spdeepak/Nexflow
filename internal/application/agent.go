@@ -25,8 +25,7 @@ func (a *App) CreateSubAgent(params schema.AgentCreate) error {
 	return err
 }
 
-// GetAgents gets the list of all root agents
-func (a *App) GetAgents() ([]schema.Agent, error) {
+func (a *App) GetRootAgents() ([]schema.Agent, error) {
 	rootAgentsList, err := a.agentService.ListRootAgents(a.ctx)
 	if err != nil {
 		slog.ErrorContext(a.ctx, "Error getting agent list", "error", err)

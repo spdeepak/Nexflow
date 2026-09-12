@@ -7,7 +7,7 @@ let currentAgentId = '';
 let agentNavStack = [];
 
 async function renderAgents(container) {
-    agentListData = await window.go.application.App.GetAgents();
+    agentListData = await window.go.application.App.GetRootAgents();
     agentNavStack = [];
 
     renderAgentList(container);
