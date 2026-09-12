@@ -1,7 +1,17 @@
 -- name: CreateRootAgent :one
 INSERT INTO agents (id, name, description, instruction, global_instruction, mode, model_name, model_credential_id,
                     credential_source, model_config, config_json)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+VALUES (sqlc.arg('id'),
+        sqlc.arg('name'),
+        sqlc.arg('description'),
+        sqlc.arg('instruction'),
+        sqlc.narg('global_instruction'),
+        sqlc.arg('mode'),
+        sqlc.arg('model_name'),
+        sqlc.arg('model_credential_id'),
+        sqlc.arg('credential_source'),
+        sqlc.narg('model_config'),
+        sqlc.narg('config_json'))
 RETURNING id, name, parent_agent_id, description, instruction, global_instruction, mode, model_name, model_credential_id, credential_source, model_config, config_json, is_active, position, created_at, updated_at;
 
 -- name: CreateSubAgent :one
@@ -103,7 +113,8 @@ SELECT id,
        created_at,
        updated_at
 FROM agents
-WHERE id = sqlc.arg('id') and parent_agent_id IS NULL;
+WHERE id = sqlc.arg('id')
+  and parent_agent_id IS NULL;
 
 -- name: UpdateAgent :one
 UPDATE agents

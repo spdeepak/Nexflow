@@ -6,15 +6,21 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 func (a *App) CreateAgent(params schema.AgentCreate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	_, err := a.agentService.CreateRootAgent(a.ctx, params)
 	return err
 }
 
 func (a *App) CreateSubAgent(params schema.AgentCreate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	_, err := a.agentService.CreateSubAgent(a.ctx, params)
 	return err
 }
@@ -42,6 +48,9 @@ func (a *App) DeleteAgent(id string) error {
 }
 
 func (a *App) UpdateAgent(id string, params schema.AgentUpdate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	agentID, err := uuid.Parse(id)
 	if err != nil {
 		slog.ErrorContext(a.ctx, "Error parsing agent id", "agent_id", id, "error", err)

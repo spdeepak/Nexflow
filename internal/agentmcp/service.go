@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 type (
@@ -62,13 +62,13 @@ func (s *service) ListAgentMCP(ctx context.Context, agentID uuid.UUID) ([]schema
 }
 
 func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
-	var authConfig schema.MCPAuthConfig
+	var authConfig schema.AuthConfig
 	if mcpServer.AuthConfig != nil {
 		if err := json.Unmarshal(mcpServer.AuthConfig, &authConfig); err != nil {
 			return schema.MCP{}, err
 		}
 	}
-	var confirmationRules schema.MCPConfirmationRules
+	var confirmationRules schema.ConfirmationRules
 	if mcpServer.ConfirmationRules != nil {
 		if err := json.Unmarshal(mcpServer.ConfirmationRules, &confirmationRules); err != nil {
 			return schema.MCP{}, err
@@ -79,10 +79,10 @@ func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
 		Args:                unmarshalStringSlice(mcpServer.Args),
 		AuthConfig:          authConfig,
 		AuthType:            &mcpServer.AuthType,
-		Command:             unmarshalStringSlice(mcpServer.Command),
+		Command:             &mcpServer.Command,
 		ConfirmationRules:   confirmationRules,
 		CreatedAt:           mcpServer.CreatedAt,
-		Endpoint:            mcpServer.Endpoint,
+		Endpoint:            &mcpServer.Endpoint,
 		ID:                  mcpServer.ID,
 		IsActive:            mcpServer.IsActive,
 		Name:                mcpServer.Name,

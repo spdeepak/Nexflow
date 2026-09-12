@@ -11,8 +11,8 @@ import (
 
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/errors"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/util"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 func skillsDir() string {
@@ -26,11 +26,17 @@ func skillsDir() string {
 }
 
 func (a *App) CreateSkill(params schema.SkillCreate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	_, err := a.skillService.CreateSkill(a.ctx, params, a.deviceID)
 	return err
 }
 
 func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 string) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	fileData, err := base64.StdEncoding.DecodeString(fileDataBase64)
 	if err != nil {
 		return fmt.Errorf("failed to decode file data: %w", err)
@@ -92,11 +98,17 @@ func (a *App) GetSkill() ([]schema.Skill, error) {
 }
 
 func (a *App) UpdateSkill(skillId uuid.UUID, params schema.SkillUpdate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	_, err := a.skillService.UpdateSkill(a.ctx, skillId, params)
 	return err
 }
 
 func (a *App) UpdateSkillFromFile(skillId uuid.UUID, params schema.SkillUpdate, fileDataBase64 string) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	fileData, err := base64.StdEncoding.DecodeString(fileDataBase64)
 	if err != nil {
 		return fmt.Errorf("failed to decode file data: %w", err)

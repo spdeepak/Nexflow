@@ -15,8 +15,7 @@ import (
 	cfg "github.com/spdeepak/nexflow/internal/config"
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
-	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 type (

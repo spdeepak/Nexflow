@@ -22,10 +22,9 @@ import (
 	"github.com/spdeepak/nexflow/internal/events"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runs"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/sessions"
 	"github.com/spdeepak/nexflow/internal/sessionstate"
-	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type testFixture struct {
@@ -116,7 +115,7 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	return model
 }
 
-func (tf *testFixture) createResearcherSubAgent(model schema.ModelCredential, rootAgentId uuid.UUID) agents.Agent {
+func (tf *testFixture) createResearcherSubAgent(model schema.ModelCredential, rootAgentId uuid.UUID) schema.Agent {
 	tf.test.Helper()
 	agentCreate := schema.AgentCreate{
 		Name:        "researcher",
@@ -158,7 +157,7 @@ func (tf *testFixture) createResearcherSubAgent(model schema.ModelCredential, ro
 	return agent
 }
 
-func (tf *testFixture) createReviewerSubAgent(model schema.ModelCredential, rootAgentId uuid.UUID) agents.Agent {
+func (tf *testFixture) createReviewerSubAgent(model schema.ModelCredential, rootAgentId uuid.UUID) schema.Agent {
 	tf.test.Helper()
 	agentCreate := schema.AgentCreate{
 		Name:        "reviewer",
@@ -199,7 +198,7 @@ func (tf *testFixture) createReviewerSubAgent(model schema.ModelCredential, root
 	return agent
 }
 
-func (tf *testFixture) createTechnicalResearchTeamRootAgent(model schema.ModelCredential) agents.Agent {
+func (tf *testFixture) createTechnicalResearchTeamRootAgent(model schema.ModelCredential) schema.Agent {
 	tf.test.Helper()
 	agentCreate := schema.AgentCreate{
 		Name:        "technical_research_team",

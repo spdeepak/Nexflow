@@ -18,8 +18,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/mcpserver"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
-	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 type testFixture struct {
@@ -120,7 +119,7 @@ func (tf *testFixture) createUserModel(user schema.User) schema.ModelCredential 
 	return model
 }
 
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) Agent {
+func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
 		Name:              "Test agent",
@@ -145,11 +144,11 @@ func (tf *testFixture) createRootAgent(model schema.ModelCredential) Agent {
 	return agent
 }
 
-func (tf *testFixture) createSubAgent(model schema.ModelCredential, rootAgent Agent) Agent {
+func (tf *testFixture) createSubAgent(model schema.ModelCredential, rootAgent schema.Agent) schema.Agent {
 	return tf.createNamedSubAgent(model, rootAgent, "Test sub-agent")
 }
 
-func (tf *testFixture) createNamedSubAgent(model schema.ModelCredential, rootAgent Agent, name string) Agent {
+func (tf *testFixture) createNamedSubAgent(model schema.ModelCredential, rootAgent schema.Agent, name string) schema.Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateSubAgent(context.Background(), schema.AgentCreate{
 		Name:              name,

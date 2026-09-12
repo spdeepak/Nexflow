@@ -18,8 +18,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/mcpserver"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
-	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 type testFixture struct {
@@ -135,7 +134,7 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 	return createdMCP
 }
 
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) agents.Agent {
+func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
 		Name:              "Test agent",

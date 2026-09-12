@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/util"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type (
@@ -38,12 +38,12 @@ func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (sc
 		Name:                arg.Name,
 		Endpoint:            arg.Endpoint,
 		Transport:           arg.Transport,
-		Command:             marshalStringSlice(arg.Command),
+		Command:             *arg.Command,
 		Args:                marshalStringSlice(arg.Args),
-		AuthConfig:          util.ToRawMessage[schema.MCPCreateAuthConfig](&arg.AuthConfig),
+		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
 		RequireConfirmation: arg.RequireConfirmation,
-		ConfirmationRules:   util.ToRawMessage[schema.MCPCreateConfirmationRules](&arg.ConfirmationRules),
+		ConfirmationRules:   util.ToRawMessage[schema.ConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            arg.IsActive,
 	}
 	if arg.AuthType != nil {
@@ -83,12 +83,12 @@ func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.
 		Name:                util.GetSQLNullString(arg.Name),
 		Endpoint:            util.GetSQLNullString(arg.Endpoint),
 		Transport:           *arg.Transport,
-		Command:             marshalStringSlice(arg.Command),
+		Command:             *arg.Command,
 		Args:                marshalStringSlice(arg.Args),
-		AuthConfig:          util.ToRawMessage[schema.MCPUpdateAuthConfig](&arg.AuthConfig),
+		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
 		RequireConfirmation: util.GetSQLNullBool(arg.RequireConfirmation),
-		ConfirmationRules:   util.ToRawMessage[schema.MCPUpdateConfirmationRules](&arg.ConfirmationRules),
+		ConfirmationRules:   util.ToRawMessage[schema.ConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            util.GetSQLNullBool(arg.IsActive),
 		ID:                  id,
 	}
@@ -105,13 +105,13 @@ func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.
 }
 
 func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
-	var authConfig schema.MCPAuthConfig
+	var authConfig schema.AuthConfig
 	if mcpServer.AuthConfig != nil {
 		if err := json.Unmarshal(mcpServer.AuthConfig, &authConfig); err != nil {
 			return schema.MCP{}, err
 		}
 	}
-	var confirmationRules schema.MCPConfirmationRules
+	var confirmationRules schema.ConfirmationRules
 	if mcpServer.ConfirmationRules != nil {
 		if err := json.Unmarshal(mcpServer.ConfirmationRules, &confirmationRules); err != nil {
 			return schema.MCP{}, err
@@ -122,10 +122,10 @@ func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
 		Args:                unmarshalStringSlice(mcpServer.Args),
 		AuthConfig:          authConfig,
 		AuthType:            &mcpServer.AuthType,
-		Command:             unmarshalStringSlice(mcpServer.Command),
+		Command:             &mcpServer.Command,
 		ConfirmationRules:   confirmationRules,
 		CreatedAt:           mcpServer.CreatedAt,
-		Endpoint:            mcpServer.Endpoint,
+		Endpoint:            &mcpServer.Endpoint,
 		ID:                  mcpServer.ID,
 		IsActive:            mcpServer.IsActive,
 		Name:                mcpServer.Name,

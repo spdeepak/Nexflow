@@ -4,8 +4,10 @@ CREATE TABLE device
 );
 
 CREATE TRIGGER device_one_row_check
-    BEFORE INSERT ON device
-    WHEN (SELECT COUNT(*) FROM device) >= 1
+    BEFORE INSERT
+    ON device
+    WHEN (SELECT COUNT(*)
+          FROM device) >= 1
 BEGIN
     SELECT RAISE(ABORT, 'Only one row is allowed in the device table');
 END;
@@ -187,7 +189,7 @@ CREATE TABLE mcp_server
     name                 TEXT     NOT NULL,
     endpoint             TEXT     NOT NULL,
     transport            TEXT     NOT NULL DEFAULT 'streamable_http',
-    command              JSONB,
+    command              TEXT,
     args                 JSONB,
     auth_type            TEXT,
     auth_config          JSONB,
@@ -197,7 +199,9 @@ CREATE TABLE mcp_server
     is_active            BOOLEAN  NOT NULL DEFAULT true,
     created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT empty_text_check CHECK ( length(name) > 0 AND length(endpoint) > 0 )
+    CONSTRAINT empty_text_check CHECK ( length(name) > 0 AND length(endpoint) > 0 ),
+    CONSTRAINT transport_check CHECK ((transport = 'streamable_http' AND length(endpoint) > 0) OR
+                                      (transport = 'stdio' AND length(command) > 0))
 );
 
 CREATE TABLE agent_mcp_server

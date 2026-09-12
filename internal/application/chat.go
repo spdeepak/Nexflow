@@ -10,7 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/spdeepak/nexflow/internal/runner"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 // currentUser returns the user bound to this device.

@@ -4,25 +4,28 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os/exec"
 	"strings"
 
 	"github.com/google/uuid"
-	"google.golang.org/adk/v2/model/openaimodel"
-	"google.golang.org/adk/v2/tool"
-	"google.golang.org/adk/v2/tool/skilltoolset"
-	"google.golang.org/genai"
-
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	adkagent "google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
+	adkauth "google.golang.org/adk/v2/auth"
 	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/model/openaimodel"
 	adkrunner "google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/mcptoolset"
+	"google.golang.org/adk/v2/tool/skilltoolset"
+	"google.golang.org/genai"
 
 	"github.com/spdeepak/nexflow/internal/agents"
 	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 // errInterrupted signals that a stage was halted because a HITL confirmation was requested. The run is left in a resumable (interrupted) state.
@@ -100,7 +103,7 @@ func (r *runner) Run(ctx context.Context, req Request, onEvent OnEventFunc, opts
 		o(options)
 	}
 
-	rootAgent, err := r.agentService.GetRootAgent(ctx, req.RootAgentID)
+	rootAgent, err := r.agentService.GetAgentDetail(ctx, req.RootAgentID)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to resolve root agent for run", "rootAgentID", req.RootAgentID, "error", err)
 		return err
@@ -259,7 +262,12 @@ func (r *runner) runStage(ctx context.Context, adkAgent adkagent.Agent, sessionI
 // buildSubAgent resolves the agent's model and constructs an ADK llmagent,
 // deriving the agent's Mode, description and LLM generation config from the
 // configuration stored on the agent.
-func (r *runner) buildSubAgent(ctx context.Context, apiAgent schema.Agent) (adkagent.Agent, error) {
+func (r *runner) buildSubAgent(ctx context.Context, subAgent schema.Agent) (adkagent.Agent, error) {
+	apiAgent, err := r.agentService.GetAgentDetail(ctx, subAgent.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get detail for sub-agent %s: %w", subAgent.Name, err)
+	}
+
 	agentModel, err := r.resolveModel(ctx, apiAgent)
 	if err != nil {
 		return nil, err
@@ -270,20 +278,20 @@ func (r *runner) buildSubAgent(ctx context.Context, apiAgent schema.Agent) (adka
 		return nil, err
 	}
 
+	mcpToolsets := r.resolveMCPs(ctx, apiAgent)
+	toolsets := make([]tool.Toolset, 0, 1+len(mcpToolsets))
+	toolsets = append(toolsets, skills)
+	toolsets = append(toolsets, mcpToolsets...)
+
 	cfg := llmagent.Config{
 		Name:                  apiAgent.Name,
 		Description:           apiAgent.Description,
 		Instruction:           apiAgent.Instruction,
 		Model:                 agentModel,
 		Mode:                  apiAgent.Mode,
-		GenerateContentConfig: apiAgent.ModelConfig,
-		Toolsets: []tool.Toolset{
-			skills,
-		},
-	}
-
-	if apiAgent.GlobalInstruction != nil && *apiAgent.GlobalInstruction != "" {
-		cfg.GlobalInstruction = *apiAgent.GlobalInstruction
+		GlobalInstruction:     apiAgent.GlobalInstruction,
+		GenerateContentConfig: &apiAgent.ModelConfig,
+		Toolsets:              toolsets,
 	}
 
 	agent, err := llmagent.New(cfg)
@@ -294,16 +302,20 @@ func (r *runner) buildSubAgent(ctx context.Context, apiAgent schema.Agent) (adka
 }
 
 // buildRootAgentWithSubAgents is like buildSubAgent but wires the given sub-agents into the root agent's config so ADK can delegate to them.
-func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent schema.Agent, adkSubAgents []adkagent.Agent) (adkagent.Agent, error) {
+func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent schema.AgentDetail, adkSubAgents []adkagent.Agent) (adkagent.Agent, error) {
 	agentModel, err := r.resolveModel(ctx, rootAgent)
 	if err != nil {
 		return nil, err
 	}
-
 	skills, err := r.resolveSkills(ctx, rootAgent)
 	if err != nil {
 		return nil, err
 	}
+
+	mcpToolsets := r.resolveMCPs(ctx, rootAgent)
+	toolsets := make([]tool.Toolset, 0, 1+len(mcpToolsets))
+	toolsets = append(toolsets, skills)
+	toolsets = append(toolsets, mcpToolsets...)
 
 	cfg := llmagent.Config{
 		Name:                  rootAgent.Name,
@@ -311,18 +323,13 @@ func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent sche
 		Instruction:           rootAgent.Instruction,
 		Model:                 agentModel,
 		Mode:                  rootAgent.Mode,
-		GenerateContentConfig: rootAgent.ModelConfig,
-		Toolsets: []tool.Toolset{
-			skills,
-		},
+		GlobalInstruction:     rootAgent.GlobalInstruction,
+		GenerateContentConfig: &rootAgent.ModelConfig,
+		Toolsets:              toolsets,
 	}
 
 	if len(adkSubAgents) > 0 {
 		cfg.SubAgents = adkSubAgents
-	}
-
-	if rootAgent.GlobalInstruction != nil && *rootAgent.GlobalInstruction != "" {
-		cfg.GlobalInstruction = *rootAgent.GlobalInstruction
 	}
 
 	slog.Info("LLM agent config", "cfg", cfg, "instruction", cfg.Instruction)
@@ -337,7 +344,7 @@ func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent sche
 // buildRootAgentWithDelegationDirective rebuilds the root agent with an escalated instruction that demands sub-agent use.
 // It is used when the root LLM answered directly without invoking its sub-agents, which the model
 // occasionally does despite its standing instructions.
-func (r *runner) buildRootAgentWithDelegationDirective(ctx context.Context, rootAgent schema.Agent, adkSubAgents []adkagent.Agent, attempt int) (adkagent.Agent, error) {
+func (r *runner) buildRootAgentWithDelegationDirective(ctx context.Context, rootAgent schema.AgentDetail, adkSubAgents []adkagent.Agent, attempt int) (adkagent.Agent, error) {
 	names := make([]string, len(adkSubAgents))
 	for i, sub := range adkSubAgents {
 		names[i] = sub.Name()
@@ -350,10 +357,7 @@ func (r *runner) buildRootAgentWithDelegationDirective(ctx context.Context, root
 
 	clone := rootAgent
 	clone.Instruction = rootAgent.Instruction + directive
-	if clone.GlobalInstruction != nil {
-		g := *clone.GlobalInstruction + directive
-		clone.GlobalInstruction = &g
-	}
+	clone.GlobalInstruction = clone.GlobalInstruction + directive
 	return r.buildRootAgentWithSubAgents(ctx, clone, adkSubAgents)
 }
 
@@ -365,7 +369,7 @@ func (r *runner) buildRootAgentWithDelegationDirective(ctx context.Context, root
 //   - auto: prefer a user key, fall back to any available (user or app) key.
 //   - user: only a user-scoped key.
 //   - app: only an app-scoped key.
-func (r *runner) resolveModel(ctx context.Context, apiAgent schema.Agent) (model.LLM, error) {
+func (r *runner) resolveModel(ctx context.Context, apiAgent schema.AgentDetail) (model.LLM, error) {
 	cred, err := r.getModelCredential(ctx, apiAgent)
 	if err != nil {
 		return nil, err
@@ -397,13 +401,9 @@ func (r *runner) resolveModel(ctx context.Context, apiAgent schema.Agent) (model
 	return withGenerateRetry(llm, defaultGenerateRetries), nil
 }
 
-func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.Agent) (*skilltoolset.SkillToolset, error) {
-	skills, err := r.skillsService.ListAgentSkill(ctx, apiAgent.ID)
-	if err != nil {
-		return nil, err
-	}
-	inMemorySkills := make([]InMemorySkill, len(skills))
-	for index, skill := range skills {
+func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.AgentDetail) (*skilltoolset.SkillToolset, error) {
+	inMemorySkills := make([]InMemorySkill, len(apiAgent.Skills))
+	for index, skill := range apiAgent.Skills {
 		inMemorySkills[index] = InMemorySkill{
 			Name:         skill.Title,
 			Description:  *skill.Content,
@@ -415,25 +415,47 @@ func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.Agent) (*ski
 	})
 }
 
-func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.Agent) (*skilltoolset.SkillToolset, error) {
-	skills, err := r.skillsService.ListAgentSkill(ctx, apiAgent.ID)
-	if err != nil {
-		return nil, err
-	}
-	inMemorySkills := make([]InMemorySkill, len(skills))
-	for index, skill := range skills {
-		inMemorySkills[index] = InMemorySkill{
-			Name:         skill.Title,
-			Description:  *skill.Content,
-			Instructions: *skill.Content,
+func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) []tool.Toolset {
+	agentMCPs := make([]tool.Toolset, len(apiAgent.Mcps))
+	for index, agentMCP := range apiAgent.Mcps {
+		mcpConfig := mcptoolset.Config{
+			RequireConfirmation: agentMCP.RequireConfirmation,
 		}
+		switch agentMCP.Transport {
+		case enums.McpTransportStdIO:
+			cmd := exec.Command(*agentMCP.Command, agentMCP.Args...)
+			mcpConfig.Transport = &mcp.CommandTransport{Command: cmd}
+		default: // streamable_http
+			mcpConfig.Endpoint = *agentMCP.Endpoint
+		}
+
+		if agentMCP.AuthType != nil && agentMCP.AuthConfig != nil {
+			switch *agentMCP.AuthType {
+			case enums.McpAuthTypeApiKey:
+				if apiKey, ok := agentMCP.AuthConfig["apiKey"].(string); ok {
+					mcpConfig.Auth = adkauth.StaticToken(apiKey)
+				}
+			case enums.McpAuthTypeOAUTH:
+				if accessToken, ok := agentMCP.AuthConfig["accessToken"].(string); ok {
+					mcpConfig.Auth = adkauth.StaticToken(accessToken)
+				}
+			}
+		}
+
+		mcpTool, err := mcptoolset.New(mcpConfig)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to create MCP toolset", "name", agentMCP.Name, "error", err)
+			continue
+		}
+		if len(agentMCP.AllowedTools) > 0 {
+			mcpTool = tool.FilterToolset(mcpTool, tool.AllowedToolsPredicate(agentMCP.AllowedTools))
+		}
+		agentMCPs[index] = mcpTool
 	}
-	return skilltoolset.New(ctx, skilltoolset.Config{
-		Source: NewStringToolSet(inMemorySkills...),
-	})
+	return agentMCPs
 }
 
-func (r *runner) getModelCredential(ctx context.Context, apiAgent schema.Agent) (modelcredentials.ModelCredential, error) {
+func (r *runner) getModelCredential(ctx context.Context, apiAgent schema.AgentDetail) (modelcredentials.ModelCredential, error) {
 	if apiAgent.ModelCredentialID != uuid.Nil {
 		cred, err := r.modelCredentialsService.GetModelCredentialWithKey(ctx, apiAgent.ModelCredentialID)
 		if err == nil {

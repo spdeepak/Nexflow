@@ -18,9 +18,9 @@ import (
 	"github.com/spdeepak/nexflow/internal/invocation"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runs"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/sessions"
 	"github.com/spdeepak/nexflow/internal/sessionstate"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type (
@@ -151,11 +151,11 @@ func (c *Chat) CreateSession(ctx context.Context, userID, rootAgentID uuid.UUID)
 		return schema.Session{}, err
 	}
 	return schema.Session{
-		AppName:     &sess.AppName,
-		CreatedAt:   &sess.CreatedAt,
-		ID:          &sess.ID,
-		RootAgentID: &sess.RootAgentID,
-		UserID:      &sess.UserID,
+		AppName:     sess.AppName,
+		CreatedAt:   sess.CreatedAt,
+		ID:          sess.ID,
+		RootAgentID: sess.RootAgentID,
+		UserID:      sess.UserID,
 	}, nil
 }
 
@@ -175,12 +175,12 @@ func (c *Chat) ListSessions(ctx context.Context, userID uuid.UUID) ([]schema.Ses
 		schemaSessions := make([]schema.Session, 0, len(sessionList))
 		for _, sess := range sessionList {
 			schemaSessions = append(schemaSessions, schema.Session{
-				AppName:     &sess.AppName,
-				CreatedAt:   &sess.CreatedAt,
-				LastUpdate:  &sess.LastUpdate,
-				ID:          &sess.ID,
-				RootAgentID: &sess.RootAgentID,
-				UserID:      &sess.UserID,
+				AppName:     sess.AppName,
+				CreatedAt:   sess.CreatedAt,
+				LastUpdate:  sess.LastUpdate,
+				ID:          sess.ID,
+				RootAgentID: sess.RootAgentID,
+				UserID:      sess.UserID,
 			})
 		}
 		return schemaSessions, nil
@@ -218,12 +218,12 @@ func (c *Chat) ListEvents(ctx context.Context, sessionID uuid.UUID) ([]schema.Ev
 				IsolationScope: &event.IsolationScope,
 				Author:         &event.Author,
 				Role:           &event.Role,
-				ContentJson:    toEventJSON[schema.EventContentJson](event.ContentJson),
-				ActionsJson:    *toEventJSON[schema.EventActionsJson](event.ActionsJson),
+				ContentJson:    toEventJSON(event.ContentJson),
+				ActionsJson:    toEventJSON(event.ActionsJson),
 				IsPartial:      &event.IsPartial,
 				IsFinal:        &event.IsFinal,
-				TokenUsage:     toEventJSON[schema.EventTokenUsage](event.TokenUsage),
-				OutputJson:     toEventJSON[schema.EventOutputJson](event.OutputJson),
+				TokenUsage:     toEventJSON(event.TokenUsage),
+				OutputJson:     toEventJSON(event.OutputJson),
 				CreatedAt:      &event.CreatedAt,
 			})
 		}
@@ -265,9 +265,8 @@ func nullString(err error) sql.NullString {
 	return sql.NullString{String: err.Error(), Valid: true}
 }
 
-func toEventJSON[T ~map[string]interface{}](msg json.RawMessage) *T {
+func toEventJSON(msg json.RawMessage) *map[string]any {
 	m := map[string]interface{}{}
 	_ = json.Unmarshal(msg, &m)
-	v := T(m)
-	return &v
+	return &m
 }

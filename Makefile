@@ -4,8 +4,6 @@ clean:
 	find . -not -path './vendor/*' -name "*.gen.go" -type f -delete
 
 generate: clean
-	mkdir -p schema
-	go tool go-jsonschema --only-models --capitalization ID --tags json -p schema -o schema/schema.gen.go schema.json
 	go tool sqlc generate
 	go tool mockery
 

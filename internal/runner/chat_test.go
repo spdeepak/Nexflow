@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/spdeepak/nexflow/internal/enums"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 // TestServiceRun_StreamsSubAgentEvents exercises the full app path

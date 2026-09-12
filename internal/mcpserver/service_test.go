@@ -17,7 +17,6 @@ import (
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type testFixture struct {

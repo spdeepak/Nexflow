@@ -8,11 +8,14 @@ import (
 
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/util"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 func (a *App) CreateModelCredential(params schema.ModelCredentialCreate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	err := a.Validate(params)
 	if err != nil {
 		return err
@@ -64,13 +67,16 @@ func (a *App) DeleteModel(modelId string) error {
 }
 
 func (a *App) UpdateModelCredential(modelId string, params schema.ModelCredentialUpdate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	id, err := uuid.Parse(modelId)
 	if err != nil {
 		return fmt.Errorf("invalid model id: %s", modelId)
 	}
 	arg := modelcredentials.UpdateModelCredentialParams{
 		ID:           id,
-		Provider:     util.GetSQLNullString(params.Provider),
+		Provider:     util.GetSQLNullString((*string)(params.Provider)),
 		ModelName:    util.GetSQLNullString(params.ModelName),
 		Title:        util.GetSQLNullString(params.Title),
 		BaseUrl:      util.GetSQLNullString(params.BaseUrl),

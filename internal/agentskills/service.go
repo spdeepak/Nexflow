@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/util"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type (

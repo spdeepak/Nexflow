@@ -5,10 +5,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 func (a *App) CreateMCP(params schema.MCPCreate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	params.UserID = a.deviceID
 	_, err := a.mcpService.CreateMCPServer(a.ctx, params)
 	return err
@@ -36,6 +39,9 @@ func (a *App) GetMCP(mcpId string) (schema.MCP, error) {
 }
 
 func (a *App) UpdateMCP(mcpId string, params schema.MCPUpdate) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
 	id, err := uuid.Parse(mcpId)
 	if err != nil {
 		return fmt.Errorf("invalid mcp id: %s", mcpId)

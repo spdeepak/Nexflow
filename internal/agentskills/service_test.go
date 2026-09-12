@@ -17,9 +17,8 @@ import (
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/skills"
-	"github.com/spdeepak/nexflow/internal/users"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type testFixture struct {
@@ -90,7 +89,7 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	return model
 }
 
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) agents.Agent {
+func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
 		Name:              "Test agent",

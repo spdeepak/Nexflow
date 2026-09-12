@@ -28,7 +28,7 @@ function renderMCPList(container) {
                     <div class="card-body">
                         <div class="card-label"><b>Transport:</b> ${escapeHtml(m.transport)}</div>
                         <div class="card-label"><b>Endpoint:</b> ${escapeHtml(m.endpoint)}</div>
-                        ${m.command && m.command.length > 0 ? `<div class="card-label"><b>Command:</b> ${escapeHtml(m.command.join(' '))}</div>` : ''}
+                        ${m.command ? `<div class="card-label"><b>Command:</b> ${escapeHtml(m.command)}</div>` : ''}
                         <div><span class="status ${statusClass}">${statusText}</span></div>
                     </div>
                 </div>`;
@@ -87,10 +87,10 @@ async function showMCPDetail(mcpId) {
                 <div class="skill-detail-label">Endpoint</div>
                 <pre class="skill-detail-content">${escapeHtml(detail.endpoint)}</pre>
             </div>
-            ${detail.command && detail.command.length > 0 ? `
+            ${detail.command ? `
             <div class="skill-detail-section">
                 <div class="skill-detail-label">Command</div>
-                <pre class="skill-detail-content">${escapeHtml(detail.command.join('\n'))}</pre>
+                <pre class="skill-detail-content">${escapeHtml(detail.command)}</pre>
             </div>` : ''}
             ${detail.args && detail.args.length > 0 ? `
             <div class="skill-detail-section">
@@ -129,8 +129,8 @@ function showAddMCPModal() {
             <input type="text" id="mcp-endpoint" placeholder="e.g. http://localhost:3000/mcp">
         </div>
         <div class="form-group">
-            <label for="mcp-command">Command (comma separated)</label>
-            <input type="text" id="mcp-command" placeholder="e.g. npx, -y, @modelcontextprotocol/server-everything">
+            <label for="mcp-command">Command</label>
+            <input type="text" id="mcp-command" placeholder="e.g. npx">
         </div>
         <div class="form-group">
             <label for="mcp-args">Arguments (comma separated)</label>
@@ -178,7 +178,7 @@ async function submitAddMCP() {
         name: name,
         transport: transport,
         endpoint: endpoint,
-        command: commandStr ? commandStr.split(',').map(s => s.trim()).filter(Boolean) : [],
+        command: commandStr || '',
         args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         authType: authTypeStr || null,
         allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
@@ -216,8 +216,8 @@ function showEditMCPModal(mcpId) {
             <input type="text" id="mcp-endpoint" value="${escapeHtml(mcp.endpoint)}">
         </div>
         <div class="form-group">
-            <label for="mcp-command">Command (comma separated)</label>
-            <input type="text" id="mcp-command" value="${escapeHtml((mcp.command || []).join(', '))}">
+            <label for="mcp-command">Command</label>
+            <input type="text" id="mcp-command" value="${escapeHtml(mcp.command || '')}">
         </div>
         <div class="form-group">
             <label for="mcp-args">Arguments (comma separated)</label>
@@ -265,7 +265,7 @@ async function submitEditMCP(mcpId) {
         name: name,
         transport: transport,
         endpoint: endpoint,
-        command: commandStr ? commandStr.split(',').map(s => s.trim()).filter(Boolean) : [],
+        command: commandStr || '',
         args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         authType: authTypeStr || null,
         allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],

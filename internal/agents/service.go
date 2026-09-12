@@ -14,8 +14,8 @@ import (
 	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/errors"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/util"
-	"github.com/spdeepak/nexflow/schema"
 )
 
 type (
@@ -55,7 +55,7 @@ func (s *service) CreateRootAgent(ctx context.Context, arg schema.AgentCreate) (
 		ID:                id,
 		Name:              arg.Name,
 		Description:       sql.NullString{String: arg.Description, Valid: true},
-		Instruction:       util.GetSQLNullString(arg.Instruction),
+		Instruction:       util.GetSQLNullString(&arg.Instruction),
 		GlobalInstruction: util.GetSQLNullString(arg.GlobalInstruction),
 		Mode:              arg.Mode,
 		ModelName:         sql.NullString{String: arg.ModelName, Valid: true},
@@ -83,7 +83,7 @@ func (s *service) CreateSubAgent(ctx context.Context, arg schema.AgentCreate) (A
 		ParentAgentID:     *arg.ParentAgentID,
 		Name:              arg.Name,
 		Description:       sql.NullString{String: arg.Description, Valid: true},
-		Instruction:       util.GetSQLNullString(arg.Instruction),
+		Instruction:       util.GetSQLNullString(&arg.Instruction),
 		GlobalInstruction: util.GetSQLNullString(arg.GlobalInstruction),
 		Mode:              arg.Mode,
 		ModelName:         sql.NullString{String: arg.ModelName, Valid: true},
@@ -124,10 +124,10 @@ func (s *service) GetAgent(ctx context.Context, id uuid.UUID) (schema.Agent, err
 		UpdatedAt:         agent.UpdatedAt,
 	}
 	if agent.GlobalInstruction.Valid {
-		apiAgent.GlobalInstruction = &agent.GlobalInstruction.String
+		apiAgent.GlobalInstruction = agent.GlobalInstruction.String
 	}
 	if agent.ParentAgentID.Time() != 0 {
-		apiAgent.ParentAgentID = &agent.ParentAgentID
+		apiAgent.ParentAgentID = agent.ParentAgentID
 	}
 	configJson, err := agent.ConfigJson.MarshalJSON()
 	if err != nil {
@@ -159,10 +159,9 @@ func (s *service) GetAgentDetail(ctx context.Context, id uuid.UUID) (schema.Agen
 		return schema.AgentDetail{}, err
 	}
 
-	var configJson *schema.AgentConfigJson
+	configJson := schema.ConfigJson{}
 	if agent.ConfigJson != nil {
-		configJson = new(schema.AgentConfigJson)
-		*configJson = *agent.ConfigJson
+		configJson = agent.ConfigJson
 	}
 
 	detail := schema.AgentDetail{
@@ -209,7 +208,7 @@ func (s *service) GetRootAgent(ctx context.Context, id uuid.UUID) (schema.Agent,
 		UpdatedAt:         agent.UpdatedAt,
 	}
 	if agent.GlobalInstruction.Valid {
-		apiAgent.GlobalInstruction = &agent.GlobalInstruction.String
+		apiAgent.GlobalInstruction = agent.GlobalInstruction.String
 	}
 	configJson, err := agent.ConfigJson.MarshalJSON()
 	if err != nil {
@@ -245,7 +244,7 @@ func (s *service) GetSubAgents(ctx context.Context, parentAgentID uuid.UUID) ([]
 			ModelCredentialID: agent.ModelCredentialID,
 			ModelName:         agent.ModelName.String,
 			Name:              agent.Name,
-			Position:          &position,
+			Position:          position,
 		})
 	}
 	return apiAgents, nil
@@ -287,7 +286,7 @@ func (s *service) ListRootAgents(ctx context.Context) ([]schema.Agent, error) {
 			CreatedAt:         agent.CreatedAt,
 			CredentialSource:  agent.CredentialSource,
 			Description:       agent.Description.String,
-			GlobalInstruction: new(util.GetStringFromSQLNullString(agent.GlobalInstruction)),
+			GlobalInstruction: util.GetStringFromSQLNullString(agent.GlobalInstruction),
 			ID:                agent.ID,
 			Instruction:       agent.Instruction.String,
 			IsActive:          agent.IsActive,

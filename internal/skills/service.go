@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/spdeepak/nexflow/internal/errors"
-	"github.com/spdeepak/nexflow/schema"
+	"github.com/spdeepak/nexflow/internal/schema"
 )
 
 type (
