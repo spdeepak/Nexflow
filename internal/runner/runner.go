@@ -431,17 +431,18 @@ func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) [
 
 		if agentMCP.AuthType != nil && agentMCP.AuthConfig != nil {
 			switch *agentMCP.AuthType {
-			case enums.McpAuthTypeApiKey:
-				if apiKey, ok := agentMCP.AuthConfig["apiKey"].(string); ok {
-					mcpConfig.Auth = adkauth.StaticToken(apiKey)
+			case enums.McpAuthTypeBearerToken:
+				if bearerToken, present := agentMCP.AuthConfig["bearer"].(string); present {
+					mcpConfig.Auth = adkauth.StaticToken(bearerToken)
 				}
-			case enums.McpAuthTypeOAUTH:
-				if accessToken, ok := agentMCP.AuthConfig["accessToken"].(string); ok {
-					mcpConfig.Auth = adkauth.StaticToken(accessToken)
+			case enums.McpAuthTypeApiKey:
+				if name, namePresent := agentMCP.AuthConfig["name"].(string); namePresent {
+					if value, valuePresent := agentMCP.AuthConfig["value"].(string); valuePresent {
+						mcpConfig.Auth = adkauth.APIKey(name, value)
+					}
 				}
 			}
 		}
-
 		mcpTool, err := mcptoolset.New(mcpConfig)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to create MCP toolset", "name", agentMCP.Name, "error", err)

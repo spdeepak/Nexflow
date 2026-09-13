@@ -101,8 +101,10 @@ func (m McpTransport) Value() (driver.Value, error) { return string(m), nil }
 type McpAuthType string
 
 const (
-	McpAuthTypeApiKey = "api_key"
-	McpAuthTypeOAUTH  = "oauth"
+	McpAuthTypeBearerToken     = "bearer"
+	McpAuthTypeApiKey          = "api_key"
+	McpAuthTypeOAUTH           = "oauth"
+	McpAuthTypeBasicCredential = "basicCredential"
 )
 
 func (m McpAuthType) String() string { return string(m) }

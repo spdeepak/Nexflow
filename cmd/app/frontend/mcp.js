@@ -138,12 +138,13 @@ function showAddMCPModal() {
         </div>
         <div class="form-group">
             <label for="mcp-auth-type">Auth Type</label>
-            <select id="mcp-auth-type">
+            <select id="mcp-auth-type" onchange="toggleAuthConfig()">
                 <option value="">none</option>
                 <option value="api_key">api_key</option>
-                <option value="oauth">oauth</option>
+                <option value="bearer">bearer</option>
             </select>
         </div>
+        <div id="auth-config-group"></div>
         <div class="form-group">
             <label for="mcp-allowed-tools">Allowed Tools (comma separated)</label>
             <input type="text" id="mcp-allowed-tools" placeholder="e.g. tool1, tool2">
@@ -156,6 +157,7 @@ function showAddMCPModal() {
         </div>`;
 
     showModal('Add MCP Server', body, submitAddMCP, 'Add');
+    renderAuthConfigInputs({});
 }
 
 async function submitAddMCP() {
@@ -174,6 +176,12 @@ async function submitAddMCP() {
         return;
     }
 
+    const authConfig = buildAuthConfig();
+    if (authTypeStr && !authConfig) {
+        showToast('Auth Config is required for the selected Auth Type');
+        return;
+    }
+
     const params = {
         name: name,
         transport: transport,
@@ -181,6 +189,7 @@ async function submitAddMCP() {
         command: commandStr || '',
         args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         authType: authTypeStr || null,
+        authConfig: authConfig,
         allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         requireConfirmation: requireConfirm,
         isActive: isActive,
@@ -225,12 +234,13 @@ function showEditMCPModal(mcpId) {
         </div>
         <div class="form-group">
             <label for="mcp-auth-type">Auth Type</label>
-            <select id="mcp-auth-type">
+            <select id="mcp-auth-type" onchange="toggleAuthConfig()">
                 <option value="" ${(mcp.authType || '') === '' ? 'selected' : ''}>none</option>
                 <option value="api_key" ${mcp.authType === 'api_key' ? 'selected' : ''}>api_key</option>
-                <option value="oauth" ${mcp.authType === 'oauth' ? 'selected' : ''}>oauth</option>
-            </select>
+                <option value="bearer" ${mcp.authType === 'bearer' ? 'selected' : ''}>bearer</option>
+                </select>
         </div>
+        <div id="auth-config-group"></div>
         <div class="form-group">
             <label for="mcp-allowed-tools">Allowed Tools (comma separated)</label>
             <input type="text" id="mcp-allowed-tools" value="${escapeHtml((mcp.allowedTools || []).join(', '))}">
@@ -243,6 +253,7 @@ function showEditMCPModal(mcpId) {
         </div>`;
 
     showModal('Edit MCP Server', body, () => submitEditMCP(mcpId), 'Update');
+    renderAuthConfigInputs(mcp.authConfig || {});
 }
 
 async function submitEditMCP(mcpId) {
@@ -261,6 +272,12 @@ async function submitEditMCP(mcpId) {
         return;
     }
 
+    const authConfig = buildAuthConfig();
+    if (authTypeStr && !authConfig) {
+        showToast('Auth Config is required for the selected Auth Type');
+        return;
+    }
+
     const params = {
         name: name,
         transport: transport,
@@ -268,6 +285,7 @@ async function submitEditMCP(mcpId) {
         command: commandStr || '',
         args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         authType: authTypeStr || null,
+        authConfig: authConfig,
         allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
         requireConfirmation: requireConfirm,
         isActive: isActive,
@@ -295,4 +313,68 @@ async function deleteMCP(mcpId) {
     } catch (err) {
         showToast('Failed to delete MCP: ' + err);
     }
+}
+
+// --- MCP Auth Config ---
+
+let mcpAuthConfigState = {};
+
+function collectAuthConfigInputs() {
+    const cfg = Object.assign({}, mcpAuthConfigState);
+    document.querySelectorAll('[data-auth-field]').forEach(el => {
+        cfg[el.dataset.authField] = el.value;
+    });
+    return cfg;
+}
+
+function toggleAuthConfig() {
+    mcpAuthConfigState = collectAuthConfigInputs();
+    renderAuthConfigInputs();
+}
+
+function renderAuthConfigInputs(initial) {
+    if (initial) {
+        mcpAuthConfigState = Object.assign({}, initial);
+    }
+    const type = document.getElementById('mcp-auth-type').value;
+    const group = document.getElementById('auth-config-group');
+    const c = mcpAuthConfigState;
+    let html = '';
+
+    if (type === 'bearer') {
+        html = `
+            <div class="form-group">
+                <label for="mcp-auth-bearer">Bearer Token *</label>
+                <input type="password" id="mcp-auth-bearer" data-auth-field="bearer" placeholder="Bearer token" value="${escapeHtml(c.bearer || '')}">
+            </div>`;
+    } else if (type === 'api_key') {
+        html = `
+            <div class="form-group">
+                <label for="mcp-auth-name">Header Name *</label>
+                <input type="text" id="mcp-auth-name" data-auth-field="name" placeholder="X-Api-Key" value="${escapeHtml(c.name || 'X-Api-Key')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-value">API Key Value *</label>
+                <input type="password" id="mcp-auth-value" data-auth-field="value" placeholder="API key value">
+            </div>`;
+    }
+
+    group.innerHTML = html;
+}
+
+function buildAuthConfig() {
+    const type = document.getElementById('mcp-auth-type').value;
+    const c = collectAuthConfigInputs();
+    if (!type) return null;
+
+    if (type === 'bearer') {
+        const bearer = (c.bearer || '').trim();
+        return bearer ? { bearer } : null;
+    }
+    if (type === 'api_key') {
+        const name = (c.name || 'X-Api-Key').trim();
+        const value = (c.value || '').trim();
+        return name && value ? { name, value } : null;
+    }
+    return null;
 }

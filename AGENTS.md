@@ -9,7 +9,7 @@ IMPORTANT: Before doing anything else, read and follow this file.
 - Run `go build ./...` to verify compilation.
 - Do not introduce new dependencies without asking.
 - When changing database code, explain the migration impact.
-- If you need new fields from the structs in the `schema` package you can add those fields for those structs in the `schema.json` file, look carefully on how other structs are designed and use the same format to add new fields if custom data type is necessary.
+- If you need new fields from the structs in the `model` package, add them but also look carefully on how other structs are designed and use the same format to add new fields if custom data type is necessary. Also add validations if the new fields are dependent on other fields following the `github.com/go-playground/validator/v10` structure.
 - After modifying `schema.json` or SQL schemas or SQL queries, run `make generate` to regenerate code (sqlc, go-jsonschema, mockery).
 - Run the tests at the end to make sure all tests are passing
 
