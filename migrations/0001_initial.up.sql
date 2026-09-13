@@ -210,3 +210,29 @@ CREATE TABLE agent_mcp_server
     mcp_server_id UUID NOT NULL REFERENCES mcp_server (id) ON DELETE RESTRICT,
     PRIMARY KEY (agent_id, mcp_server_id)
 );
+
+CREATE TABLE mcp_oauth_client_config
+(
+    mcp_server_id UUID     NOT NULL PRIMARY KEY REFERENCES mcp_server (id) ON DELETE CASCADE,
+    auth_url      TEXT     NOT NULL,
+    token_url     TEXT     NOT NULL,
+    client_id     TEXT     NOT NULL,
+    client_secret TEXT,
+    scopes        JSONB    NOT NULL DEFAULT '[]',
+    auth_style    INTEGER  NOT NULL DEFAULT 0,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE mcp_oauth_grant
+(
+    user_id       UUID     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    mcp_server_id UUID     NOT NULL REFERENCES mcp_server (id) ON DELETE CASCADE,
+    access_token  TEXT     NOT NULL,
+    refresh_token TEXT,
+    expiry        DATETIME,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, mcp_server_id)
+);
+CREATE INDEX idx_mcp_oauth_grant_server ON mcp_oauth_grant (mcp_server_id);

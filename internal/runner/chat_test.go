@@ -37,7 +37,7 @@ func TestServiceRun_StreamsSubAgentEvents(t *testing.T) {
 	fixture.createResearcherSubAgent(model, rootAgent.ID)
 	fixture.createReviewerSubAgent(model, rootAgent.ID)
 
-	chatService := NewChat(fixture.sessionsQuery, fixture.eventsQuery, fixture.runsQuery, fixture.sessionStateQuery, fixture.agentService, fixture.modelService, user.ID, "nexflow")
+	chatService := NewChat(fixture.sessionsQuery, fixture.eventsQuery, fixture.runsQuery, fixture.sessionStateQuery, fixture.agentService, fixture.modelService, user.ID, "nexflow", fixture.tokenStore)
 
 	session, err := chatService.CreateSession(context.Background(), user.ID, rootAgent.ID)
 	require.NoError(t, err)

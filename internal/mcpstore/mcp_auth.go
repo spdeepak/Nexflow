@@ -1,4 +1,4 @@
-package runner
+package mcpstore
 
 import (
 	"context"
@@ -12,6 +12,9 @@ import (
 	"google.golang.org/adk/v2/auth"
 )
 
+var ErrNotConnected = errors.New("mcpconnect: no token stored for this user/connection")
+var ErrReauthRequired = errors.New("mcpconnect: oauth grant is no longer valid, re-authorization required")
+
 type persistingTokenSource struct {
 	inner          oauth2.TokenSource
 	userID, connID string
@@ -24,6 +27,13 @@ type persistingTokenSource struct {
 func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
 	tok, err := p.inner.Token()
 	if err != nil {
+		var re *oauth2.RetrieveError
+		if errors.As(err, &re) && isDeadGrantError(re.ErrorCode) {
+			if derr := p.store.DeleteGrant(context.Background(), p.userID, p.connID); derr != nil {
+				slog.Error("failed to delete dead oauth grant", "userId", p.userID, "connectionId", p.connID, "error", derr)
+			}
+			return nil, ErrReauthRequired
+		}
 		return nil, err
 	}
 
@@ -42,7 +52,7 @@ func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
 	return tok, nil
 }
 
-func credentialProviderFor(ctx context.Context, mcpServerID, userID, connID string, store TokenStore) (auth.CredentialProvider, error) {
+func CredentialProviderFor(ctx context.Context, mcpServerID, userID, connID string, store TokenStore) (auth.CredentialProvider, error) {
 	cc, err := store.ClientConfig(ctx, mcpServerID)
 	if err != nil {
 		return nil, fmt.Errorf("loading oauth client config: %w", err)
@@ -89,32 +99,14 @@ type StoredToken struct {
 	Scopes       []string
 }
 
-// OAuthClientConfig is registered once per MCP server — shared across
-// every user who connects to that server. Populate it via discovery/DCR
-// when the server supports it, or a one-time manual setup when it doesn't.
-type OAuthClientConfig struct {
-	AuthURL      string
-	TokenURL     string
-	ClientID     string
-	ClientSecret string // empty for a public/PKCE-only client
-	Scopes       []string
-	AuthStyle    oauth2.AuthStyle // AuthStyleAutoDetect is fine until a provider proves otherwise
+// isDeadGrantError reports whether the token endpoint rejected the refresh
+// because the stored grant itself is no longer usable — as opposed to a
+// transient failure (network or 5xx) that should simply be retried.
+func isDeadGrantError(code string) bool {
+	switch code {
+	case "invalid_grant", "invalid_scope", "unauthorized_client":
+		return true
+	default:
+		return false
+	}
 }
-
-// OAuthGrant is the per-(user, connection) token pair — the only thing
-// that's actually unique to a given user.
-type OAuthGrant struct {
-	AccessToken  string
-	RefreshToken string
-	Expiry       time.Time
-}
-
-// TokenStore persists OAuth grants per (userID, connectionID). Key on both —
-// a user can connect the same MCP twice, or connect several different MCPs.
-type TokenStore interface {
-	ClientConfig(ctx context.Context, mcpServerID string) (OAuthClientConfig, error)
-	LoadGrant(ctx context.Context, userID, connectionID string) (OAuthGrant, error)
-	SaveGrant(ctx context.Context, userID, connectionID string, tok *oauth2.Token) error
-}
-
-var ErrNotConnected = errors.New("mcpconnect: no token stored for this user/connection")

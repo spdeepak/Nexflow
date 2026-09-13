@@ -24,6 +24,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/agents"
 	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/enums"
+	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/schema"
 )
@@ -75,6 +76,7 @@ type (
 		modelCredentialsService modelcredentials.Service
 		sessionService          session.Service
 		skillsService           agentskills.Service
+		tokenStore              mcpstore.TokenStore
 		userID                  uuid.UUID
 		appName                 string
 	}
@@ -83,11 +85,12 @@ type (
 	}
 )
 
-func New(agentService agents.Service, modelCredentialService modelcredentials.Service, sessionService session.Service, userId uuid.UUID, appName string) Runner {
+func New(agentService agents.Service, modelCredentialService modelcredentials.Service, sessionService session.Service, userId uuid.UUID, appName string, tokenStore mcpstore.TokenStore) Runner {
 	return &runner{
 		agentService:            agentService,
 		modelCredentialsService: modelCredentialService,
 		sessionService:          sessionService,
+		tokenStore:              tokenStore,
 		userID:                  userId,
 		appName:                 appName,
 	}
@@ -441,6 +444,13 @@ func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) [
 						mcpConfig.Auth = adkauth.APIKey(name, value)
 					}
 				}
+			case enums.McpAuthTypeOAUTH:
+				provider, err := mcpstore.CredentialProviderFor(ctx, agentMCP.ID.String(), r.userID.String(), agentMCP.ID.String(), r.tokenStore)
+				if err != nil {
+					slog.WarnContext(ctx, "MCP not connected via OAuth, skipping", "name", agentMCP.Name, "mcpServerId", agentMCP.ID, "error", err)
+					continue
+				}
+				mcpConfig.Auth = provider
 			}
 		}
 		mcpTool, err := mcptoolset.New(mcpConfig)

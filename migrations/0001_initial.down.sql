@@ -1,3 +1,7 @@
+DROP TABLE IF EXISTS mcp_oauth_grant;
+DROP TABLE IF EXISTS mcp_oauth_client_config;
+DROP TABLE IF EXISTS agent_mcp_server;
+DROP TABLE IF EXISTS mcp_server;
 DROP TABLE IF EXISTS agent_skills;
 DROP TABLE IF EXISTS skills;
 DROP TABLE IF EXISTS tool_calls;

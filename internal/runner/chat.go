@@ -16,6 +16,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/events"
 	"github.com/spdeepak/nexflow/internal/invocation"
+	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runs"
 	"github.com/spdeepak/nexflow/internal/schema"
@@ -40,6 +41,7 @@ type (
 		sessionStateQuery       sessionstate.Querier
 		agentService            agents.Service
 		modelCredentialsService modelcredentials.Service
+		tokenStore              mcpstore.TokenStore
 		userID                  uuid.UUID
 		appName                 string
 	}
@@ -51,7 +53,7 @@ type (
 	}
 )
 
-func NewChat(sessionQuery sessions.Querier, eventsQuery events.Querier, runsQuery runs.Querier, sessionStateQuery sessionstate.Querier, agentService agents.Service, modelCredentialsService modelcredentials.Service, userID uuid.UUID, appName string) *Chat {
+func NewChat(sessionQuery sessions.Querier, eventsQuery events.Querier, runsQuery runs.Querier, sessionStateQuery sessionstate.Querier, agentService agents.Service, modelCredentialsService modelcredentials.Service, userID uuid.UUID, appName string, tokenStore mcpstore.TokenStore) *Chat {
 	return &Chat{
 		sessionQuery:            sessionQuery,
 		eventsQuery:             eventsQuery,
@@ -59,6 +61,7 @@ func NewChat(sessionQuery sessions.Querier, eventsQuery events.Querier, runsQuer
 		sessionStateQuery:       sessionStateQuery,
 		agentService:            agentService,
 		modelCredentialsService: modelCredentialsService,
+		tokenStore:              tokenStore,
 		userID:                  userID,
 		appName:                 appName,
 	}
@@ -82,7 +85,7 @@ func (c *Chat) Run(ctx context.Context, sessionID, rootAgentID uuid.UUID, userMe
 
 	sessionStore := sessions.NewSessionStore(c.sessionQuery, c.eventsQuery, c.sessionStateQuery, c.appName)
 
-	chatRunner := New(c.agentService, c.modelCredentialsService, sessionStore, c.userID, c.appName)
+	chatRunner := New(c.agentService, c.modelCredentialsService, sessionStore, c.userID, c.appName, c.tokenStore)
 
 	runCtx := invocation.ContextWithInvocation(ctx, runID)
 

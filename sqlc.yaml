@@ -160,6 +160,40 @@ overrides:
       - column: "agent_mcp_server.agent_id"
         go_type: "github.com/google/uuid.UUID"
 
+      # mcp_oauth_client_config
+      - column: "mcp_oauth_client_config.mcp_server_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "mcp_oauth_client_config.client_secret"
+        go_type:
+          import: "database/sql"
+          type: "NullString"
+      - column: "mcp_oauth_client_config.scopes"
+        go_type: "string"
+      - column: "mcp_oauth_client_config.auth_style"
+        go_type: "golang.org/x/oauth2.AuthStyle"
+      - column: "mcp_oauth_client_config.created_at"
+        go_type: "time.Time"
+      - column: "mcp_oauth_client_config.updated_at"
+        go_type: "time.Time"
+
+      # mcp_oauth_grant
+      - column: "mcp_oauth_grant.user_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "mcp_oauth_grant.mcp_server_id"
+        go_type: "github.com/google/uuid.UUID"
+      - column: "mcp_oauth_grant.refresh_token"
+        go_type:
+          import: "database/sql"
+          type: "NullString"
+      - column: "mcp_oauth_grant.expiry"
+        go_type:
+          import: "database/sql"
+          type: "NullTime"
+      - column: "mcp_oauth_grant.created_at"
+        go_type: "time.Time"
+      - column: "mcp_oauth_grant.updated_at"
+        go_type: "time.Time"
+
 
 sql:
   - schema:
@@ -307,3 +341,13 @@ sql:
         <<: *common_go
         package: "agentmcp"
         out: "./internal/agentmcp"
+
+  - schema:
+      - "./migrations/*.up.sql"
+    queries: "./sqls/mcp_oauth.sql"
+    engine: "sqlite"
+    gen:
+      go:
+        <<: *common_go
+        package: "mcpstore"
+        out: "./internal/mcpstore"

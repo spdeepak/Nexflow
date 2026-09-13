@@ -18,6 +18,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/device"
 	"github.com/spdeepak/nexflow/internal/events"
 	"github.com/spdeepak/nexflow/internal/mcpserver"
+	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runner"
 	"github.com/spdeepak/nexflow/internal/runs"
@@ -68,9 +69,10 @@ func main() {
 	eventQuery := events.New(dbConnection)
 	runQuery := runs.New(dbConnection)
 	stateQuery := sessionstate.New(dbConnection)
-	chatService := runner.NewChat(sessionQuery, eventQuery, runQuery, stateQuery, agentService, modelService, deviceID, "nexflow")
+	mcpStoreQuery := mcpstore.NewTokenStore(mcpstore.New(dbConnection))
+	chatService := runner.NewChat(sessionQuery, eventQuery, runQuery, stateQuery, agentService, modelService, deviceID, "nexflow", mcpStoreQuery)
 
-	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID)
+	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID, mcpStoreQuery)
 
 	err := wails.Run(&options.App{
 		Title:  "Nexflow",

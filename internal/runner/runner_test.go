@@ -20,6 +20,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/events"
+	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runs"
 	"github.com/spdeepak/nexflow/internal/schema"
@@ -33,6 +34,7 @@ type testFixture struct {
 	userService       users.Service
 	modelService      modelcredentials.Service
 	sessionService    session.Service
+	tokenStore        mcpstore.TokenStore
 	sessionsQuery     sessions.Querier
 	eventsQuery       events.Querier
 	sessionStateQuery sessionstate.Querier
@@ -82,6 +84,7 @@ func newTestFixture(test *testing.T) *testFixture {
 		userService:       users.NewService(users.New(conn)),
 		modelService:      modelcredentials.NewService(modelcredentials.New(conn)),
 		sessionService:    sessions.NewSessionStore(sessionsQuery, eventsQuery, sessionStateQuery, "nexflow"),
+		tokenStore:        mcpstore.NewTokenStore(mcpstore.New(conn)),
 		sessionsQuery:     sessionsQuery,
 		eventsQuery:       eventsQuery,
 		sessionStateQuery: sessionStateQuery,
@@ -253,7 +256,7 @@ func TestRun_OK(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, chatSession)
 
-	agentRunner := New(fixture.agentService, fixture.modelService, fixture.sessionService, user.ID, "nexflow")
+	agentRunner := New(fixture.agentService, fixture.modelService, fixture.sessionService, user.ID, "nexflow", fixture.tokenStore)
 	req := Request{
 		RootAgentID: rootAgent.ID,
 		SessionID:   chatSession.ID,

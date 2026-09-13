@@ -12,6 +12,7 @@ import (
 
 	"github.com/spdeepak/nexflow/internal/agents"
 	"github.com/spdeepak/nexflow/internal/mcpserver"
+	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/runner"
 	"github.com/spdeepak/nexflow/internal/skills"
@@ -26,11 +27,12 @@ type App struct {
 	mcpService   mcpserver.Service
 	userService  users.Service
 	chatService  *runner.Chat
+	tokenStore   mcpstore.TokenStore
 	deviceID     uuid.UUID
 	validator    *validator.Validate
 }
 
-func NewApp(agentService agents.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID uuid.UUID) *App {
+func NewApp(agentService agents.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID uuid.UUID, tokenStore mcpstore.TokenStore) *App {
 	return &App{
 		agentService: agentService,
 		skillService: kbService,
@@ -39,6 +41,7 @@ func NewApp(agentService agents.Service, kbService skills.Service, modelService 
 		userService:  userService,
 		chatService:  chatService,
 		mcpService:   mcpService,
+		tokenStore:   tokenStore,
 		validator:    validator.New(),
 	}
 }

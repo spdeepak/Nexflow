@@ -106,9 +106,47 @@ async function showMCPDetail(mcpId) {
                 <div class="skill-detail-label">Require Confirmation</div>
                 <pre class="skill-detail-content">${detail.requireConfirmation ? 'Yes' : 'No'}</pre>
             </div>
+            ${authType === 'oauth' ? `
+            <div class="skill-detail-section">
+                <div class="skill-detail-label">OAuth Connection</div>
+                <div class="skill-detail-content" id="mcp-oauth-status">Checking...</div>
+            </div>` : ''}
         </div>`;
 
     container.innerHTML = html;
+
+    if (authType === 'oauth') {
+        renderOAuthStatus(detail.id);
+    }
+}
+
+async function renderOAuthStatus(mcpId) {
+    const statusEl = document.getElementById('mcp-oauth-status');
+    if (!statusEl) return;
+    let connected = false;
+    try {
+        connected = await window.go.application.App.IsOAuthConnected(mcpId);
+    } catch (err) {
+        statusEl.textContent = 'Unknown';
+        return;
+    }
+    statusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span class="status ${connected ? 'status-active' : 'status-inactive'}">${connected ? 'Connected' : 'Not Connected'}</span>
+            <button class="btn btn-small" onclick="connectOAuthMCP('${mcpId}')">${connected ? 'Reconnect' : 'Connect'}</button>
+        </div>`;
+}
+
+async function connectOAuthMCP(mcpId) {
+    try {
+        showToast('Opening browser for authorization...');
+        await window.go.application.App.ConnectOAuthMCP(mcpId);
+        showToast('OAuth connected');
+        renderOAuthStatus(mcpId);
+        renderView();
+    } catch (err) {
+        showToast('OAuth connect failed: ' + err);
+    }
 }
 
 function showAddMCPModal() {
@@ -142,6 +180,7 @@ function showAddMCPModal() {
                 <option value="">none</option>
                 <option value="api_key">api_key</option>
                 <option value="bearer">bearer</option>
+                <option value="oauth">oauth</option>
             </select>
         </div>
         <div id="auth-config-group"></div>
@@ -238,6 +277,7 @@ function showEditMCPModal(mcpId) {
                 <option value="" ${(mcp.authType || '') === '' ? 'selected' : ''}>none</option>
                 <option value="api_key" ${mcp.authType === 'api_key' ? 'selected' : ''}>api_key</option>
                 <option value="bearer" ${mcp.authType === 'bearer' ? 'selected' : ''}>bearer</option>
+                <option value="oauth" ${mcp.authType === 'oauth' ? 'selected' : ''}>oauth</option>
                 </select>
         </div>
         <div id="auth-config-group"></div>
@@ -357,6 +397,40 @@ function renderAuthConfigInputs(initial) {
                 <label for="mcp-auth-value">API Key Value *</label>
                 <input type="password" id="mcp-auth-value" data-auth-field="value" placeholder="API key value">
             </div>`;
+    } else if (type === 'oauth') {
+        html = `
+            <div class="form-group">
+                <label for="mcp-auth-client-id">Client ID *</label>
+                <input type="text" id="mcp-auth-client-id" data-auth-field="client_id" placeholder="OAuth client id" value="${escapeHtml(c.client_id || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-client-secret">Client Secret</label>
+                <input type="password" id="mcp-auth-client-secret" data-auth-field="client_secret" placeholder="Optional for public/PKCE-only clients" value="${escapeHtml(c.client_secret || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-scopes">Scopes (comma separated)</label>
+                <input type="text" id="mcp-auth-scopes" data-auth-field="scopes" placeholder="e.g. openid, profile, email" value="${escapeHtml(c.scopes || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-auth-url">Authorization URL (auto-discovered if empty)</label>
+                <input type="text" id="mcp-auth-auth-url" data-auth-field="auth_url" placeholder="https://provider.example.com/authorize" value="${escapeHtml(c.auth_url || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-token-url">Token URL (auto-discovered if empty)</label>
+                <input type="text" id="mcp-auth-token-url" data-auth-field="token_url" placeholder="https://provider.example.com/token" value="${escapeHtml(c.token_url || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-redirect-uri">Redirect URI</label>
+                <input type="text" id="mcp-auth-redirect-uri" data-auth-field="redirect_uri" placeholder="http://127.0.0.1:48421/callback" value="${escapeHtml(c.redirect_uri || '')}">
+            </div>
+            <div class="form-group">
+                <label for="mcp-auth-style">Auth Style</label>
+                <select id="mcp-auth-style" data-auth-field="auth_style">
+                    <option value="auto" ${(c.auth_style || 'auto') === 'auto' ? 'selected' : ''}>auto</option>
+                    <option value="in_header" ${c.auth_style === 'in_header' ? 'selected' : ''}>in_header</option>
+                    <option value="in_params" ${c.auth_style === 'in_params' ? 'selected' : ''}>in_params</option>
+                </select>
+            </div>`;
     }
 
     group.innerHTML = html;
@@ -375,6 +449,24 @@ function buildAuthConfig() {
         const name = (c.name || 'X-Api-Key').trim();
         const value = (c.value || '').trim();
         return name && value ? { name, value } : null;
+    }
+    if (type === 'oauth') {
+        const clientId = (c.client_id || '').trim();
+        if (!clientId) return null;
+        const scopes = (c.scopes || '').split(',').map(s => s.trim()).filter(Boolean);
+        const cfg = {
+            client_id: clientId,
+            client_secret: (c.client_secret || '').trim(),
+            scopes: scopes,
+            auth_url: (c.auth_url || '').trim(),
+            token_url: (c.token_url || '').trim(),
+            redirect_uri: (c.redirect_uri || '').trim(),
+            auth_style: c.auth_style || 'auto',
+        };
+        for (const k of Object.keys(cfg)) {
+            if (cfg[k] === '' || (Array.isArray(cfg[k]) && cfg[k].length === 0)) delete cfg[k];
+        }
+        return cfg;
     }
     return null;
 }
