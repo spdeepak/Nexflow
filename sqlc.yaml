@@ -153,6 +153,10 @@ overrides:
         go_type: "string"
       - column: "mcp_server.allowed_tools"
         go_type: "string"
+      - column: "mcp_server.confirmation_rules"
+        go_type:
+          import: "database/sql"
+          type: "NullString"
 
       # agent_mcp_server
       - column: "agent_mcp_server.mcp_server_id"

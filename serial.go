@@ -1,38 +1,20 @@
-package device
+package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
-type (
-	service struct {
-		querier Querier
+func main() {
+	serial, err := getSerialNumber()
+	if err != nil {
+		fmt.Printf("Error retrieving serial number: %v\n", err)
+		return
 	}
-	Service interface {
-		GetDeviceDetail(ctx context.Context) uuid.UUID
-	}
-)
-
-func NewService(querier Querier) Service {
-	return &service{
-		querier: querier,
-	}
-}
-
-func (s *service) GetDeviceDetail(ctx context.Context) uuid.UUID {
-	id, err := s.querier.GetDeviceDetail(ctx)
-	if err == nil {
-		return id
-	}
-	id, _ = s.querier.AddDevice(ctx, uuid.New())
-	return id
+	fmt.Printf("Your laptop serial number is: %s\n", serial)
 }
 
 func getSerialNumber() (string, error) {

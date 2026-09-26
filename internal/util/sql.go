@@ -46,3 +46,17 @@ func ToRawMessage[T any](cfg *T) json.RawMessage {
 	}
 	return raw
 }
+
+func ToNullString[T any](cfg *T) sql.NullString {
+	if cfg == nil {
+		return sql.NullString{Valid: false}
+	}
+	raw, err := json.Marshal(*cfg)
+	if err != nil {
+		return sql.NullString{Valid: false}
+	}
+	if string(raw) == "null" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: string(raw), Valid: true}
+}

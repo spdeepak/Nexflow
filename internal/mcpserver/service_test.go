@@ -16,6 +16,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
+	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/users"
 )
 
@@ -63,7 +64,7 @@ func newTestFixture(test *testing.T) *testFixture {
 		test:         test,
 		mcpService:   NewService(New(conn)),
 		userService:  users.NewService(users.New(conn)),
-		agentService: agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn))),
+		agentService: agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn)), modelcredentials.NewService(modelcredentials.New(conn))),
 		modelService: modelcredentials.NewService(modelcredentials.New(conn)),
 	}
 }
@@ -86,7 +87,7 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 		Args:                []string{"arg-1", "arg-2"},
 		AuthConfig:          nil,
 		AuthType:            nil,
-		Command:             []string{"docker", "command"},
+		Command:             new("docker"),
 		ConfirmationRules:   nil,
 		Endpoint:            "https://aisenseapi.com/mcp",
 		IsActive:            true,
@@ -105,7 +106,7 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 	require.Empty(tf.test, createdMCP.AuthType)
 	require.Equal(tf.test, mcpCreate.Command, createdMCP.Command)
 	require.Empty(tf.test, createdMCP.ConfirmationRules)
-	require.Equal(tf.test, mcpCreate.Endpoint, createdMCP.Endpoint)
+	require.Equal(tf.test, mcpCreate.Endpoint, *createdMCP.Endpoint)
 	require.Equal(tf.test, mcpCreate.IsActive, createdMCP.IsActive)
 	require.Equal(tf.test, mcpCreate.RequireConfirmation, createdMCP.RequireConfirmation)
 	require.Equal(tf.test, mcpCreate.Transport, createdMCP.Transport)
@@ -126,7 +127,7 @@ func TestCreateMCPServer_NOK_EmptyName(t *testing.T) {
 		Args:                []string{},
 		AuthConfig:          nil,
 		AuthType:            nil,
-		Command:             []string{"docker", "command"},
+		Command:             new("docker"),
 		ConfirmationRules:   nil,
 		Endpoint:            "https://aisenseapi.com/mcp",
 		IsActive:            true,
@@ -148,7 +149,7 @@ func TestCreateMCPServer_NOK_EmptyEndpoint(t *testing.T) {
 		Args:                []string{},
 		AuthConfig:          nil,
 		AuthType:            nil,
-		Command:             []string{"docker", "command"},
+		Command:             new("docker"),
 		ConfirmationRules:   nil,
 		IsActive:            true,
 		RequireConfirmation: false,

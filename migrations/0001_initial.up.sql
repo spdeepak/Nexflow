@@ -1,6 +1,6 @@
 CREATE TABLE device
 (
-    id UUID NOT NULL PRIMARY KEY
+    id TEXT NOT NULL PRIMARY KEY
 );
 
 CREATE TRIGGER device_one_row_check

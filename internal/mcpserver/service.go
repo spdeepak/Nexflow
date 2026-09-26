@@ -43,7 +43,7 @@ func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (sc
 		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
 		RequireConfirmation: arg.RequireConfirmation,
-		ConfirmationRules:   util.ToRawMessage[schema.ConfirmationRules](&arg.ConfirmationRules),
+		ConfirmationRules:   util.ToNullString[schema.ConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            arg.IsActive,
 	}
 	if arg.AuthType != nil {
@@ -88,7 +88,7 @@ func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.
 		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
 		RequireConfirmation: util.GetSQLNullBool(arg.RequireConfirmation),
-		ConfirmationRules:   util.ToRawMessage[schema.ConfirmationRules](&arg.ConfirmationRules),
+		ConfirmationRules:   util.ToNullString[schema.ConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            util.GetSQLNullBool(arg.IsActive),
 		ID:                  id,
 	}
@@ -112,8 +112,8 @@ func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
 		}
 	}
 	var confirmationRules schema.ConfirmationRules
-	if mcpServer.ConfirmationRules != nil {
-		if err := json.Unmarshal(mcpServer.ConfirmationRules, &confirmationRules); err != nil {
+	if mcpServer.ConfirmationRules.Valid {
+		if err := json.Unmarshal([]byte(mcpServer.ConfirmationRules.String), &confirmationRules); err != nil {
 			return schema.MCP{}, err
 		}
 	}

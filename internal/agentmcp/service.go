@@ -69,8 +69,8 @@ func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
 		}
 	}
 	var confirmationRules schema.ConfirmationRules
-	if mcpServer.ConfirmationRules != nil {
-		if err := json.Unmarshal(mcpServer.ConfirmationRules, &confirmationRules); err != nil {
+	if mcpServer.ConfirmationRules.Valid {
+		if err := json.Unmarshal([]byte(mcpServer.ConfirmationRules.String), &confirmationRules); err != nil {
 			return schema.MCP{}, err
 		}
 	}

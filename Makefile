@@ -44,6 +44,11 @@ wails-dev:
 	cd cmd/app && rm -rf build && mkdir -p build && cp frontend/appicon.png build/appicon.png
 	cd cmd/app && go tool wails dev
 
+# Run a mock OAuth server for local development/testing.
+# Auto-creates an MCP server entry and pre-populates client config.
+mock-oauth:
+	go run ./cmd/mock_oauth -port=18421
+
 # Build the Wails desktop app into a packaged macOS .app bundle (with the custom
 # app icon from frontend/appicon.png). The output bundle is produced by the Wails
 # CLI in cmd/app/build/bin/ and can be opened from anywhere.
