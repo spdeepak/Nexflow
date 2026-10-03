@@ -1,5 +1,6 @@
 -- name: CreateEvent :one
-INSERT INTO events (id, session_id, invocation_id, seq, branch, isolation_scope, author, role, content_json, actions_json,
+INSERT INTO events (id, session_id, invocation_id, seq, branch, isolation_scope, author, role, content_json,
+                    actions_json,
                     is_partial, is_final, token_usage, output_json)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
 RETURNING id, session_id, invocation_id, seq, branch, isolation_scope, author, role, content_json, actions_json, is_partial, is_final, token_usage, output_json, created_at;

@@ -718,8 +718,14 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* --- Sub-agent ordering (skills-style list rows) --- */
@@ -990,8 +996,12 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(74, 108, 247, 0.4); }
-    50% { box-shadow: 0 0 0 6px rgba(74, 108, 247, 0); }
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(74, 108, 247, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(74, 108, 247, 0);
+    }
 }
 
 .chat-main {
@@ -1081,10 +1091,21 @@ body {
     margin: 10px 0 6px;
 }
 
-.md-body h1 { font-size: 1.4em; }
-.md-body h2 { font-size: 1.25em; }
-.md-body h3 { font-size: 1.15em; }
-.md-body h4, .md-body h5, .md-body h6 { font-size: 1.05em; }
+.md-body h1 {
+    font-size: 1.4em;
+}
+
+.md-body h2 {
+    font-size: 1.25em;
+}
+
+.md-body h3 {
+    font-size: 1.15em;
+}
+
+.md-body h4, .md-body h5, .md-body h6 {
+    font-size: 1.05em;
+}
 
 .md-body p {
     margin: 6px 0;

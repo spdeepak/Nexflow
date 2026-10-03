@@ -16,6 +16,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/schema"
+	"github.com/spdeepak/nexflow/internal/users"
 )
 
 type (
@@ -78,7 +79,7 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -95,7 +96,7 @@ func (tf *testFixture) createUserModel(user schema.User) schema.ModelCredential 
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -127,7 +128,7 @@ func TestCreateAppModel_ConstraintCheckErr(t *testing.T) {
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -146,7 +147,7 @@ func TestCreateAppModel_Err(t *testing.T) {
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,

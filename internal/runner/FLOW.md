@@ -14,7 +14,8 @@ orchestrates ADK over the agent tree.
 
 **Frontend-only navigation.** Once the chat view mounts, the frontend calls:
 
-- **`App.ListSessions()`** — `../application` → `chat.Service.ListSessions()` (`internal/runner/chat.go:155`) → SQL query for sessions
+- **`App.ListSessions()`** — `../application` → `chat.Service.ListSessions()` (`internal/runner/chat.go:155`) → SQL
+  query for sessions
 - **`App.GetAgents()`** — `../application` → `agents.Service.ListRootAgents()` → SQL query for root agents
 
 ## 2. Click "New Chat"
@@ -77,13 +78,13 @@ Lifecycle ("Agent started/finished execution") is signalled by ADK's
 
 ### Key files to target for tests
 
-| Layer | File | Methods to test |
-|---|---|---|
-| **App bindings** | `../application` | `CreateSession`, `SendMessageSession`, `ListSessions`, `ListEvents`, `GetRun` |
-| **Chat service** | `internal/runner/chat.go` | `Run`, `CreateSession`, `GetSession`, `ListSessions`, `DeleteSession`, `ListEvents` |
-| **Session store** | `internal/sessions/service.go` | `AppendEvent`, `Create`, `Get` |
-| **Runner** | `internal/runner/runner.go` | `Run`, `runStage`, `buildSubAgent`, `buildRootAgentWithSubAgents`, `resolveModel` |
-| **Agents service** | `internal/agents/service.go` | `GetAgent`, `ListAgentChildren`, `ListRootAgents` |
+| Layer              | File                           | Methods to test                                                                     |
+|--------------------|--------------------------------|-------------------------------------------------------------------------------------|
+| **App bindings**   | `../application`               | `CreateSession`, `SendMessageSession`, `ListSessions`, `ListEvents`, `GetRun`       |
+| **Chat service**   | `internal/runner/chat.go`      | `Run`, `CreateSession`, `GetSession`, `ListSessions`, `DeleteSession`, `ListEvents` |
+| **Session store**  | `internal/sessions/service.go` | `AppendEvent`, `Create`, `Get`                                                      |
+| **Runner**         | `internal/runner/runner.go`    | `Run`, `runStage`, `buildSubAgent`, `buildRootAgentWithSubAgents`, `resolveModel`   |
+| **Agents service** | `internal/agents/service.go`   | `GetAgent`, `ListAgentChildren`, `ListRootAgents`                                   |
 
 For unit tests, mock the sqlc queriers (they're interfaces) and test the
 service/orchestration layers in isolation. For integration tests, use a real

@@ -268,7 +268,7 @@ async function showEditAgentModal(agentId) {
             </div>
         </div>`;
 
-    showModal('Edit Agent', body, () => submitEditAgent(agentId),'Update');
+    showModal('Edit Agent', body, () => submitEditAgent(agentId), 'Update');
 }
 
 async function submitEditAgent(agentId) {
@@ -340,7 +340,7 @@ async function showCreateSubAgentModal(parentId, parentName) {
             </select>
         </div>`;
 
-    showModal('Create Sub Agent', body, () => submitCreateSubAgent(parentId),'Create Sub-Agent');
+    showModal('Create Sub Agent', body, () => submitCreateSubAgent(parentId), 'Create Sub-Agent');
 }
 
 async function submitCreateSubAgent(parentId) {
@@ -474,7 +474,7 @@ async function showCreateAgentModal() {
             </div>
         </div>`;
 
-    showModal('Create Agent', body, submitCreateAgent,'Create Agent');
+    showModal('Create Agent', body, submitCreateAgent, 'Create Agent');
 }
 
 async function submitCreateAgent() {

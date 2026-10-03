@@ -443,12 +443,12 @@ function buildAuthConfig() {
 
     if (type === 'bearer') {
         const bearer = (c.bearer || '').trim();
-        return bearer ? { bearer } : null;
+        return bearer ? {bearer} : null;
     }
     if (type === 'api_key') {
         const name = (c.name || 'X-Api-Key').trim();
         const value = (c.value || '').trim();
-        return name && value ? { name, value } : null;
+        return name && value ? {name, value} : null;
     }
     if (type === 'oauth') {
         const clientId = (c.client_id || '').trim();

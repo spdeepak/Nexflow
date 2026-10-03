@@ -1,18 +1,19 @@
 # Database Schema
 
-> Requires PostgreSQL 18+ for the built-in `uuidv7()` (time-ordered UUID). If using the web service. GUI apps use sqlite.
+> Requires PostgreSQL 18+ for the built-in `uuidv7()` (time-ordered UUID). If using the web service. GUI apps use
+> sqlite.
 > For PG < 18, install the `pg_uuidv7` extension or replace with `gen_random_uuid()`.
 
 ## Custom ENUM Types
 
-| Type                | Values                                          | Used By                                      |
-|---------------------|-------------------------------------------------|----------------------------------------------|
+| Type                | Values                                          | Used By                                   |
+|---------------------|-------------------------------------------------|-------------------------------------------|
 | `credential_scope`  | `app`, `user`                                   | `model_credentials.scope`, `skills.scope` |
-| `agent_mode`        | `chat`, `task`, `single_turn`                   | `agents.mode`                                |
-| `credential_source` | `auto`, `user`, `app`                           | `agents.credential_source`                   |
-| `run_status`        | `running`, `completed`, `failed`, `interrupted` | `runs.status`                                |
-| `tool_call_status`  | `ok`, `error`, `long_running`                   | `tool_calls.status`                          |
-| `event_role`        | `user`, `model`, `function`                     | `events.role`                                |
+| `agent_mode`        | `chat`, `task`, `single_turn`                   | `agents.mode`                             |
+| `credential_source` | `auto`, `user`, `app`                           | `agents.credential_source`                |
+| `run_status`        | `running`, `completed`, `failed`, `interrupted` | `runs.status`                             |
+| `tool_call_status`  | `ok`, `error`, `long_running`                   | `tool_calls.status`                       |
+| `event_role`        | `user`, `model`, `function`                     | `events.role`                             |
 
 ## Tables
 
@@ -127,6 +128,7 @@ HITL (Human-in-the-Loop) confirmation is controlled by two columns:
 
 ### agent_mcp_server
 
-Join table: which MCP server is attached to which agent (many-to-many). At runtime the runner builds an `mcptoolset.Config`
+Join table: which MCP server is attached to which agent (many-to-many). At runtime the runner builds an
+`mcptoolset.Config`
 for each linked MCP server and passes them as `Toolsets` on the agent's `llmagent.Config`. MCPs are scoped per-agent to
 limit tool surface area, reduce token usage, and enforce least-privilege access.

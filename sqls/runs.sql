@@ -31,9 +31,9 @@ ORDER BY started_at DESC;
 
 -- name: UpdateRunStatus :one
 UPDATE runs
-SET status         = ?2,
-    finished_at    = CASE WHEN ?2 IN ('completed', 'failed', 'interrupted') THEN datetime('now') ELSE finished_at END,
-    error          = COALESCE(?3, error)
+SET status      = ?2,
+    finished_at = CASE WHEN ?2 IN ('completed', 'failed', 'interrupted') THEN datetime('now') ELSE finished_at END,
+    error       = COALESCE(?3, error)
 WHERE id = ?1
 RETURNING id, session_id, invocation_id, root_agent_id, status, started_at, finished_at, error;
 

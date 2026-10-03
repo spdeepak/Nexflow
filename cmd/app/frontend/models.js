@@ -176,7 +176,7 @@ function showEditModelModal(modelId) {
             <label class="checkbox-label"><input type="checkbox" id="mc-active" ${model.isActive ? 'checked' : ''}> Active</label>
         </div>`;
 
-    showModal('Edit Model Credential', body, () => submitEditModel(modelId),'Update');
+    showModal('Edit Model Credential', body, () => submitEditModel(modelId), 'Update');
 }
 
 async function submitEditModel(modelId) {

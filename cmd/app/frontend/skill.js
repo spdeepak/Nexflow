@@ -323,7 +323,7 @@ function confirmDeleteSkill(skillId, skillTitle) {
 
 async function deleteSkill(skillId) {
     try {
-        console.log("deleting skill: ",skillId)
+        console.log("deleting skill: ", skillId)
         await window.go.application.App.DeleteSkill(skillId);
         hideModal();
         renderView();

@@ -19,33 +19,44 @@
 
 ## Overview
 
-Nexflow is a Wails-based desktop application that lets you build **agent trees** — a root agent with ordered sub-agents that are delegated to autonomously at runtime via the Google **Agent Development Kit (ADK)**. Everything is managed from a local console UI:
+Nexflow is a Wails-based desktop application that lets you build **agent trees** — a root agent with ordered sub-agents
+that are delegated to autonomously at runtime via the Google **Agent Development Kit (ADK)**. Everything is managed from
+a local console UI:
 
-- **Agents** — define root agents and sub-agents, set their mode (`chat`, `task`, `single_turn`), assign a model credential, and reorder children.
-- **Models** — register model credentials (API keys + base URLs) for LLM providers (OpenAI, Anthropic, Google, Ollama, …) at `app` (shared) or `user` scope, stored in the local database.
+- **Agents** — define root agents and sub-agents, set their mode (`chat`, `task`, `single_turn`), assign a model
+  credential, and reorder children.
+- **Models** — register model credentials (API keys + base URLs) for LLM providers (OpenAI, Anthropic, Google,
+  Ollama, …) at `app` (shared) or `user` scope, stored in the local database.
 - **Skills** — manage static skills (text or PDF) and attach them to agents for later use.
-- **MCP** — manage Model Context Protocol server configs (`streamable_http` or `stdio`), optionally restrict them to an allow-list of tools, and link them to agents.
-- **Chat** — start a session against any agent tree and watch events stream to the UI in real time, with run and session history persisted locally.
+- **MCP** — manage Model Context Protocol server configs (`streamable_http` or `stdio`), optionally restrict them to an
+  allow-list of tools, and link them to agents.
+- **Chat** — start a session against any agent tree and watch events stream to the UI in real time, with run and session
+  history persisted locally.
 
 ## Features
 
-- **Hierarchical agents** — persistent, position-ordered agent trees; sub-agents are reorderable from the UI, and the saved order is preserved in the ADK sub-agent list built at run time.
-- **ADK-powered runs** — a run invokes a root agent and ADK autonomously delegates to sub-agents based on instructions and descriptions; events, run status, and session state are persisted per invocation.
-- **User-scoped resources** — model credentials and skills can be app-scoped (shared) or user-scoped; sessions belong to a user.
-- **Human-in-the-loop** — a run can pause on an ADK tool-confirmation request and be resumed with an approve/reject decision.
-- **Local-first** — runs on a local SQLite database with no external services (an optional Ollama container is included via `docker-compose`).
+- **Hierarchical agents** — persistent, position-ordered agent trees; sub-agents are reorderable from the UI, and the
+  saved order is preserved in the ADK sub-agent list built at run time.
+- **ADK-powered runs** — a run invokes a root agent and ADK autonomously delegates to sub-agents based on instructions
+  and descriptions; events, run status, and session state are persisted per invocation.
+- **User-scoped resources** — model credentials and skills can be app-scoped (shared) or user-scoped; sessions belong to
+  a user.
+- **Human-in-the-loop** — a run can pause on an ADK tool-confirmation request and be resumed with an approve/reject
+  decision.
+- **Local-first** — runs on a local SQLite database with no external services (an optional Ollama container is included
+  via `docker-compose`).
 
 ## Tech Stack
 
-| Layer      | Technology                                                        |
-|------------|--------------------------------------------------------------------|
-| Desktop    | [Wails v2](https://wails.io) (Go + WebView2/WebKit)                 |
+| Layer      | Technology                                                                       |
+|------------|----------------------------------------------------------------------------------|
+| Desktop    | [Wails v2](https://wails.io) (Go + WebView2/WebKit)                              |
 | Inference  | [Google ADK v2](https://google.github.io/adk-docs/) (`google.golang.org/adk/v2`) |
-| Backend    | Go 1.26                                                           |
-| Database   | SQLite (via `modernc.org/sqlite`), `golang-migrate` migrations    |
-| Queries    | [sqlc](https://sqlc.dev) generated, type-safe query code           |
-| Validation | `go-jsonschema` generated types from [`schema.json`](schema.json)   |
-| Frontend   | Vanilla HTML/CSS/JS (no framework), Wails bindings                 |
+| Backend    | Go 1.26                                                                          |
+| Database   | SQLite (via `modernc.org/sqlite`), `golang-migrate` migrations                   |
+| Queries    | [sqlc](https://sqlc.dev) generated, type-safe query code                         |
+| Validation | `go-jsonschema` generated types from [`schema.json`](schema.json)                |
+| Frontend   | Vanilla HTML/CSS/JS (no framework), Wails bindings                               |
 
 ## Getting Started
 
@@ -108,7 +119,8 @@ make test-backend      # lint + tests
 
 ## Architecture Notes
 
-- The **chat flow** (session creation → run → streaming events) is documented in [`internal/runner/FLOW.md`](internal/runner/FLOW.md).
+- The **chat flow** (session creation → run → streaming events) is documented in [
+  `internal/runner/FLOW.md`](internal/runner/FLOW.md).
 - Design recommendations and deferred work are in [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md).
 - The **database schema** and custom enum types are documented in [`migrations/README.md`](migrations/README.md).
 

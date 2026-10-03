@@ -21,13 +21,13 @@ VALUES (sqlc.arg('mcp_server_id'),
         sqlc.arg('scopes'),
         sqlc.arg('auth_style'))
 ON CONFLICT (mcp_server_id) DO UPDATE
-SET auth_url      = excluded.auth_url,
-    token_url     = excluded.token_url,
-    client_id     = excluded.client_id,
-    client_secret = excluded.client_secret,
-    scopes        = excluded.scopes,
-    auth_style    = excluded.auth_style,
-    updated_at    = datetime('now')
+    SET auth_url      = excluded.auth_url,
+        token_url     = excluded.token_url,
+        client_id     = excluded.client_id,
+        client_secret = excluded.client_secret,
+        scopes        = excluded.scopes,
+        auth_style    = excluded.auth_style,
+        updated_at    = datetime('now')
 RETURNING mcp_server_id, auth_url, token_url, client_id, client_secret, scopes, auth_style, created_at, updated_at;
 
 -- name: GetMCPOAuthGrant :one
@@ -50,10 +50,10 @@ VALUES (sqlc.arg('user_id'),
         sqlc.narg('refresh_token'),
         sqlc.narg('expiry'))
 ON CONFLICT (user_id, mcp_server_id) DO UPDATE
-SET access_token  = excluded.access_token,
-    refresh_token = excluded.refresh_token,
-    expiry        = excluded.expiry,
-    updated_at    = datetime('now')
+    SET access_token  = excluded.access_token,
+        refresh_token = excluded.refresh_token,
+        expiry        = excluded.expiry,
+        updated_at    = datetime('now')
 RETURNING user_id, mcp_server_id, access_token, refresh_token, expiry, created_at, updated_at;
 
 -- name: DeleteMCPOAuthGrant :exec

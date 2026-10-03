@@ -19,6 +19,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/skills"
+	"github.com/spdeepak/nexflow/internal/users"
 )
 
 type testFixture struct {
@@ -61,14 +62,14 @@ func newTestFixture(test *testing.T) *testFixture {
 	})
 
 	conn := db.Connect(dbConfig)
-
+	modelCredentialsService := modelcredentials.NewService(modelcredentials.New(conn))
 	return &testFixture{
 		test:              test,
 		agentSkillService: agentskills.NewService(agentskills.New(conn)),
 		userService:       users.NewService(users.New(conn)),
 		skillService:      skills.NewService(skills.New(conn)),
-		agentService:      agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn))),
-		modelService:      modelcredentials.NewService(modelcredentials.New(conn)),
+		agentService:      agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn)), modelCredentialsService),
+		modelService:      modelCredentialsService,
 	}
 }
 
@@ -77,7 +78,7 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -89,12 +90,12 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	return model
 }
 
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agent {
+func (tf *testFixture) createRootAgent(model schema.ModelCredential) agents.Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
 		Name:              "Test agent",
 		Description:       "Test agent description",
-		Instruction:       new("Test agent instruction"),
+		Instruction:       "Test agent instruction",
 		GlobalInstruction: new("Test agent global instruction"),
 		Mode:              llmagent.ModeChat,
 		ModelName:         "minimax-m3:cloud",

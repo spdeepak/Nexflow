@@ -29,9 +29,9 @@ type MockServer struct {
 }
 
 type authCodeData struct {
-	redirectURI string
+	redirectURI  string
 	codeVerifier string
-	expiresAt   time.Time
+	expiresAt    time.Time
 }
 
 type tokenData struct {
@@ -76,7 +76,7 @@ func (m *MockServer) Start() (string, error) {
 	mux.HandleFunc("/.well-known/openid-configuration", m.handleDiscovery)
 
 	m.srv = &http.Server{
-		Handler: mux,
+		Handler:      mux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -226,11 +226,11 @@ func (m *MockServer) handleToken(w http.ResponseWriter, r *http.Request) {
 func (m *MockServer) handleDiscovery(w http.ResponseWriter, r *http.Request) {
 	base := m.BaseURL()
 	writeJSONResponse(w, map[string]any{
-		"authorization_endpoint": base + "/authorize",
-		"token_endpoint":         base + "/token",
-		"scopes_supported":       []string{"openid", "profile", "email"},
-		"response_types_supported": []string{"code"},
-		"grant_types_supported":    []string{"authorization_code", "refresh_token"},
+		"authorization_endpoint":           base + "/authorize",
+		"token_endpoint":                   base + "/token",
+		"scopes_supported":                 []string{"openid", "profile", "email"},
+		"response_types_supported":         []string{"code"},
+		"grant_types_supported":            []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported": []string{"S256"},
 	})
 }

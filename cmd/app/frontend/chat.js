@@ -111,7 +111,7 @@ function newChat() {
             } catch (e) {
                 showToast('Failed to create chat: ' + e);
             }
-        },'Start Chat'
+        }, 'Start Chat'
     );
 }
 
@@ -138,7 +138,7 @@ async function openChat(sessionId, rootAgentId) {
     try {
         detail = await window.go.application.App.GetAgent(agentId);
     } catch (e) {
-        detail = { name: 'Unnamed' };
+        detail = {name: 'Unnamed'};
     }
 
     let subAgents = [];
@@ -152,8 +152,8 @@ async function openChat(sessionId, rootAgentId) {
     }
 
     chatTreeAgents = [
-        { id: detail.id || agentId, name: detail.name || 'Parent', kind: 'parent', position: -1 },
-        ...subAgents.map((s, i) => ({ id: s.id, name: s.name || s.id, kind: 'sub', position: i }))
+        {id: detail.id || agentId, name: detail.name || 'Parent', kind: 'parent', position: -1},
+        ...subAgents.map((s, i) => ({id: s.id, name: s.name || s.id, kind: 'sub', position: i}))
     ];
 
     view.innerHTML = `
@@ -233,7 +233,7 @@ function showEventHistory(invocationId) {
         if (text) byAgent[ev.author] = (byAgent[ev.author] || '') + text + '\n\n';
     }
 
-    chatHistoryReplay = { events: runEvents, order: participants, byAgent };
+    chatHistoryReplay = {events: runEvents, order: participants, byAgent};
 
     const tree = document.getElementById('chat-tree');
     tree.scrollTop = 0;
@@ -260,7 +260,7 @@ function showEventHistory(invocationId) {
             const el = document.getElementById(`tree-node-${idx}`);
             if (el) {
                 setNodeState(el, 'state-running');
-                el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                el.scrollIntoView({block: 'nearest', behavior: 'smooth'});
             }
         }
         i++;
@@ -277,7 +277,10 @@ function resetTreeGlow() {
 }
 
 function clearEventHistory() {
-    if (chatReplayTimer) { clearTimeout(chatReplayTimer); chatReplayTimer = null; }
+    if (chatReplayTimer) {
+        clearTimeout(chatReplayTimer);
+        chatReplayTimer = null;
+    }
     chatHistoryReplay = null;
     resetTreeGlow();
 }
@@ -349,7 +352,7 @@ function formatBubbleTime(dateStr) {
     const sameDay = d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth() &&
         d.getDate() === now.getDate();
-    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     return sameDay ? time : `${d.toLocaleDateString()} ${time}`;
 }
 
@@ -575,9 +578,11 @@ class EventDetail {
         this.node = node;
         this.historyText = '';
     }
+
     setHistoryText(text) {
         this.historyText = text;
     }
+
     show() {
         const kindLabel = this.node.kind === 'parent' ? 'Parent Agent' : 'Sub-agent';
         const kindClass = this.node.kind === 'parent' ? 'detail-parent' : 'detail-sub';
@@ -609,6 +614,12 @@ class EventDetail {
 }
 
 function unbindChatEvents() {
-    try { window.runtime.EventsOff(CHAT_EVENT); } catch (e) {}
-    try { window.runtime.EventsOff(CHAT_INTERRUPT_EVENT); } catch (e) {}
+    try {
+        window.runtime.EventsOff(CHAT_EVENT);
+    } catch (e) {
+    }
+    try {
+        window.runtime.EventsOff(CHAT_INTERRUPT_EVENT);
+    } catch (e) {
+    }
 }
