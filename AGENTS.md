@@ -179,6 +179,15 @@ return fmt.Errorf("failed to load agent %s: %w", id, err)
 
 Do not wrap errors merely to add noise.
 
+## Reference skills
+
+Global coding-agent skills are installed at `~/.agents/skills/` (from github.com/spf13/go-skills):
+`go`, `cobra-viper`, `go-spec-reviewer`, `go-release`, `wails`, `fileflow-pathologize`.
+Load them via the `skill` tool when relevant.
+
+Where a skill's guidance conflicts with this document, this document wins —
+in particular, this project deliberately uses `internal/` domain packages (see §4).
+
 ---
 
 # 6. Dependency Policy
