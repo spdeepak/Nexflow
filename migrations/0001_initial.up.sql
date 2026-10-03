@@ -160,6 +160,7 @@ CREATE TABLE skills
     content_type TEXT        NOT NULL DEFAULT 'text',
     content      TEXT,
     storage_uri  TEXT,
+    global_skill BOOLEAN     NOT NULL DEFAULT 0,
     metadata     JSONB       NOT NULL DEFAULT '{}',
     is_active    BOOLEAN     NOT NULL DEFAULT 1,
     created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -76,11 +76,12 @@ func (e EventRole) Value() (driver.Value, error) { return string(e), nil }
 type SkillContentType string
 
 const (
-	SkillContentTypeText     SkillContentType = "text"
-	SkillContentTypeMarkDown SkillContentType = "markdown"
-	SkillContentTypePDF      SkillContentType = "pdf"
-	SkillContentTypeCSV      SkillContentType = "csv"
-	SkillContentTypeJson     SkillContentType = "json"
+	SkillContentTypeText       SkillContentType = "text"
+	SkillContentTypeMarkDown   SkillContentType = "markdown"
+	SkillContentTypePDF        SkillContentType = "pdf"
+	SkillContentTypeCSV        SkillContentType = "csv"
+	SkillContentTypeJson       SkillContentType = "json"
+	SkillContentTypeStorageUri SkillContentType = "storageUri"
 )
 
 func (s SkillContentType) String() string { return string(s) }

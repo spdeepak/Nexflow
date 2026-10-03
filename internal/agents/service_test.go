@@ -19,6 +19,7 @@ import (
 	"github.com/spdeepak/nexflow/internal/mcpserver"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/schema"
+	"github.com/spdeepak/nexflow/internal/users"
 )
 
 type testFixture struct {
@@ -65,9 +66,10 @@ func newTestFixture(test *testing.T) *testFixture {
 	agentSkillService := agentskills.NewService(agentskills.New(conn))
 	agentMCPService := agentmcp.NewService(agentmcp.New(conn))
 	mcpService := mcpserver.NewService(mcpserver.New(conn))
+	modelCredentialService := modelcredentials.NewService(modelcredentials.New(conn))
 	return &testFixture{
 		test:              test,
-		agentService:      NewService(New(conn), agentSkillService, agentMCPService),
+		agentService:      NewService(New(conn), agentSkillService, agentMCPService, modelCredentialService),
 		agentSkillService: agentSkillService,
 		agentMCPService:   agentMCPService,
 		mcpService:        mcpService,
@@ -90,7 +92,7 @@ func (tf *testFixture) createAppModel() schema.ModelCredential {
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -107,7 +109,7 @@ func (tf *testFixture) createUserModel(user schema.User) schema.ModelCredential 
 	arg := schema.ModelCredentialCreate{
 		ApiKey:      "schema-key",
 		BaseUrl:     "http://localhost:11434/v1",
-		ExtraConfig: schema.ModelCredentialCreateExtraConfig{},
+		ExtraConfig: schema.ExtraConfig{},
 		Provider:    "ollama",
 		ModelName:   "minimax-m3:cloud",
 		Scope:       enums.CredentialScopeApp,
@@ -119,12 +121,12 @@ func (tf *testFixture) createUserModel(user schema.User) schema.ModelCredential 
 	return model
 }
 
-func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agent {
+func (tf *testFixture) createRootAgent(model schema.ModelCredential) Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateRootAgent(context.Background(), schema.AgentCreate{
 		Name:              "Test agent",
 		Description:       "Test agent description",
-		Instruction:       new("Test agent instruction"),
+		Instruction:       "Test agent instruction",
 		GlobalInstruction: new("Test agent global instruction"),
 		Mode:              llmagent.ModeChat,
 		ModelName:         "minimax-m3:cloud",
@@ -144,16 +146,16 @@ func (tf *testFixture) createRootAgent(model schema.ModelCredential) schema.Agen
 	return agent
 }
 
-func (tf *testFixture) createSubAgent(model schema.ModelCredential, rootAgent schema.Agent) schema.Agent {
+func (tf *testFixture) createSubAgent(model schema.ModelCredential, rootAgent Agent) Agent {
 	return tf.createNamedSubAgent(model, rootAgent, "Test sub-agent")
 }
 
-func (tf *testFixture) createNamedSubAgent(model schema.ModelCredential, rootAgent schema.Agent, name string) schema.Agent {
+func (tf *testFixture) createNamedSubAgent(model schema.ModelCredential, rootAgent Agent, name string) Agent {
 	tf.test.Helper()
 	agent, err := tf.agentService.CreateSubAgent(context.Background(), schema.AgentCreate{
 		Name:              name,
 		Description:       "Test sub-agent description",
-		Instruction:       new("Test sub-agent instruction"),
+		Instruction:       "Test sub-agent instruction",
 		GlobalInstruction: new("Test sub-agent global instruction"),
 		Mode:              llmagent.ModeTask,
 		ModelName:         "minimax-m3:cloud",
@@ -194,7 +196,7 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 		Args:                []string{"arg-1", "arg-2"},
 		AuthConfig:          nil,
 		AuthType:            nil,
-		Command:             []string{"docker", "command"},
+		Command:             new("docker"),
 		ConfirmationRules:   nil,
 		Endpoint:            "https://aisenseapi.com/mcp",
 		IsActive:            true,
@@ -278,7 +280,7 @@ func TestCreateRootAgentWithAppModel_NOK_NoParentID(t *testing.T) {
 	subAgent := schema.AgentCreate{
 		Name:              "Test sub-agent",
 		Description:       "Test sub-agent description",
-		Instruction:       new("Test sub-agent instruction"),
+		Instruction:       "Test sub-agent instruction",
 		GlobalInstruction: new("Test sub-agent global instruction"),
 		Mode:              llmagent.ModeTask,
 		ModelName:         "minimax-m3:cloud",
@@ -304,11 +306,11 @@ func TestSubAgentPositionsAppendInOrder(t *testing.T) {
 	require.Len(t, children, 3)
 
 	assert.Equal(t, sa1.ID, children[0].ID)
-	assert.EqualValues(t, 0, *children[0].Position)
+	assert.EqualValues(t, 0, children[0].Position)
 	assert.Equal(t, sa2.ID, children[1].ID)
-	assert.EqualValues(t, 1, *children[1].Position)
+	assert.EqualValues(t, 1, children[1].Position)
 	assert.Equal(t, sa3.ID, children[2].ID)
-	assert.EqualValues(t, 2, *children[2].Position)
+	assert.EqualValues(t, 2, children[2].Position)
 }
 
 func TestReorderAgentChildren_OK(t *testing.T) {
@@ -332,11 +334,11 @@ func TestReorderAgentChildren_OK(t *testing.T) {
 	require.Len(t, children, 3)
 
 	assert.Equal(t, sa3.ID, children[0].ID)
-	assert.EqualValues(t, 1, *children[0].Position)
+	assert.EqualValues(t, 1, children[0].Position)
 	assert.Equal(t, sa2.ID, children[1].ID)
-	assert.EqualValues(t, 2, *children[1].Position)
+	assert.EqualValues(t, 2, children[1].Position)
 	assert.Equal(t, sa1.ID, children[2].ID)
-	assert.EqualValues(t, 3, *children[2].Position)
+	assert.EqualValues(t, 3, children[2].Position)
 }
 
 func TestUpdateAgent_OKWithoutForeignKeys(t *testing.T) {
@@ -441,7 +443,7 @@ func TestGetAgentDetail_OK(t *testing.T) {
 	require.Empty(t, rootAgent.ParentAgentID)
 	require.Empty(t, agentDetail.ParentAgentID)
 	require.Equal(t, rootAgent.Instruction.String, agentDetail.Instruction)
-	require.Equal(t, rootAgent.GlobalInstruction.String, *agentDetail.GlobalInstruction)
+	require.Equal(t, rootAgent.GlobalInstruction.String, agentDetail.GlobalInstruction)
 	require.Equal(t, rootAgent.Mode, agentDetail.Mode)
 	require.Equal(t, rootAgent.ModelName.String, agentDetail.ModelName)
 	require.Equal(t, model.ID.String(), agentDetail.ModelCredentialID.String())
@@ -475,7 +477,7 @@ func TestGetRootAgent_OK(t *testing.T) {
 	require.Equal(t, rootAgent.CreatedAt, agent.CreatedAt)
 	require.Equal(t, rootAgent.CredentialSource, agent.CredentialSource)
 	require.Equal(t, rootAgent.Description.String, agent.Description)
-	require.Equal(t, rootAgent.GlobalInstruction.String, *agent.GlobalInstruction)
+	require.Equal(t, rootAgent.GlobalInstruction.String, agent.GlobalInstruction)
 	require.Equal(t, rootAgent.ID, agent.ID)
 	require.Equal(t, rootAgent.Instruction.String, agent.Instruction)
 	require.Equal(t, rootAgent.IsActive, agent.IsActive)

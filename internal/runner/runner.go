@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/mcptoolset"
 	"google.golang.org/adk/v2/tool/skilltoolset"
+	"google.golang.org/adk/v2/tool/skilltoolset/skill"
 	"google.golang.org/genai"
 
 	"github.com/spdeepak/nexflow/internal/agents"
@@ -405,16 +408,43 @@ func (r *runner) resolveModel(ctx context.Context, apiAgent schema.AgentDetail) 
 }
 
 func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.AgentDetail) (*skilltoolset.SkillToolset, error) {
-	inMemorySkills := make([]InMemorySkill, len(apiAgent.Skills))
-	for index, skill := range apiAgent.Skills {
-		inMemorySkills[index] = InMemorySkill{
-			Name:         skill.Title,
-			Description:  *skill.Content,
-			Instructions: *skill.Content,
+	var inMemorySkills []InMemorySkill
+	fileSources := make(map[string]skill.Source)
+
+	for _, sk := range apiAgent.Skills {
+		if sk.ContentType == enums.SkillContentTypeStorageUri && sk.StorageUri != nil && *sk.StorageUri != "" {
+			skillDir := filepath.Dir(*sk.StorageUri)
+			parentDir := filepath.Dir(skillDir)
+
+			if _, exists := fileSources[parentDir]; !exists {
+				fileSources[parentDir] = skill.NewFileSystemSource(os.DirFS(parentDir))
+			}
+		} else {
+			inMemorySkills = append(inMemorySkills, InMemorySkill{
+				Name:         sk.Title,
+				Description:  *sk.Content,
+				Instructions: *sk.Content,
+			})
 		}
 	}
+
+	var sources []skill.Source
+	if len(inMemorySkills) > 0 {
+		sources = append(sources, NewStringToolSet(inMemorySkills...))
+	}
+	for _, src := range fileSources {
+		sources = append(sources, src)
+	}
+
+	var combinedSource skill.Source
+	if len(sources) > 0 {
+		combinedSource = skill.NewMergedSource(sources...)
+	} else {
+		combinedSource = NewStringToolSet()
+	}
+
 	return skilltoolset.New(ctx, skilltoolset.Config{
-		Source: NewStringToolSet(inMemorySkills...),
+		Source: combinedSource,
 	})
 }
 

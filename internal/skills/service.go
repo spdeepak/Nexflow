@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 
+	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/errors"
 	"github.com/spdeepak/nexflow/internal/schema"
 )
@@ -24,6 +26,8 @@ type (
 		GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, error)
 		GetAvailableSkill(ctx context.Context, arg GetAvailableSkillParams) ([]GetAvailableSkillRow, error)
 		GetSkill(ctx context.Context, id uuid.UUID) (Skill, error)
+		GetSkillByTitle(ctx context.Context, title string) (Skill, error)
+		SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error
 		UpdateSkill(ctx context.Context, id uuid.UUID, arg schema.SkillUpdate) (Skill, error)
 	}
 )
@@ -44,11 +48,15 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 
 	var content sql.NullString
 	var storageUri sql.NullString
+	globalSkill := false
 	if arg.Content != nil {
 		content = sql.NullString{String: *arg.Content, Valid: true}
 	}
 	if arg.StorageUri != nil {
 		storageUri = sql.NullString{String: *arg.StorageUri, Valid: true}
+		if arg.GlobalSkill != nil {
+			globalSkill = *arg.GlobalSkill
+		}
 	}
 	id, _ := uuid.NewV7()
 	createSkillParams := CreateSkillParams{
@@ -59,6 +67,7 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 		ContentType: arg.ContentType,
 		Content:     content,
 		StorageUri:  storageUri,
+		GlobalSkill: globalSkill,
 		Metadata:    metadata,
 	}
 
@@ -139,6 +148,104 @@ func (s *service) GetSkill(ctx context.Context, id uuid.UUID) (Skill, error) {
 		return Skill{}, err
 	}
 	return skill, nil
+}
+
+func (s *service) GetSkillByTitle(ctx context.Context, title string) (Skill, error) {
+	skill, err := s.querier.GetSkillByTitle(ctx, title)
+	if err != nil {
+		slog.ErrorContext(ctx, "error getting skill by title", "err", err)
+		return Skill{}, err
+	}
+	return skill, nil
+}
+
+func (s *service) SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get user home dir", "err", err)
+		return err
+	}
+
+	globalSkillsDir := filepath.Join(home, ".agents", "skills")
+	entries, err := os.ReadDir(globalSkillsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			slog.DebugContext(ctx, "global skills directory does not exist", "path", globalSkillsDir)
+			return nil
+		}
+		slog.ErrorContext(ctx, "failed to read global skills dir", "err", err)
+		return err
+	}
+
+	// Collect skill titles from filesystem
+	skillPaths := make(map[string]string) // title -> skillMDPath
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		skillDir := filepath.Join(globalSkillsDir, entry.Name())
+		skillMDPath := filepath.Join(skillDir, "SKILL.md")
+
+		// Check if SKILL.md exists
+		if _, err = os.Stat(skillMDPath); os.IsNotExist(err) {
+			continue
+		}
+
+		// Use directory name as title
+		title := entry.Name()
+		skillPaths[title] = skillDir
+	}
+
+	// Get all storageUri skills from DB with app scope
+	dbSkills, err := s.querier.GetSkillsByContentTypeAndScope(ctx, GetSkillsByContentTypeAndScopeParams{
+		ContentType: enums.SkillContentTypeStorageUri,
+		Scope:       enums.SkillScopeUser,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get storageUri skills from DB", "err", err)
+		return err
+	}
+
+	// Build map for O(1) lookups
+	dbSkillsByTitle := make(map[string]Skill, len(dbSkills))
+	for _, dbSkill := range dbSkills {
+		dbSkillsByTitle[dbSkill.Title] = dbSkill
+	}
+
+	// Delete skills that are in DB but not in filesystem anymore
+	for _, dbSkill := range dbSkills {
+		if _, exists := skillPaths[dbSkill.Title]; !exists {
+			slog.InfoContext(ctx, "Deleting orphaned skill", "title", dbSkill.Title, "id", dbSkill.ID)
+			if err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: dbSkill.ID, UserID: dbSkill.UserID}); err != nil {
+				slog.ErrorContext(ctx, "failed to delete orphaned skill", "title", dbSkill.Title, "err", err)
+			}
+		}
+	}
+
+	// Add new skills from filesystem
+	for title, skillMDPath := range skillPaths {
+		if _, exists := dbSkillsByTitle[title]; exists {
+			continue
+		}
+		globalSkill := true
+		skillCreate := schema.SkillCreate{
+			Title:       title,
+			ContentType: enums.SkillContentTypeStorageUri,
+			Content:     nil,
+			Scope:       enums.SkillScopeUser,
+			StorageUri:  &skillMDPath,
+			GlobalSkill: &globalSkill,
+			Metadata:    nil,
+		}
+
+		_, err = s.CreateSkill(ctx, skillCreate, userID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to create skill from global", "title", title, "err", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *service) UpdateSkill(ctx context.Context, id uuid.UUID, arg schema.SkillUpdate) (Skill, error) {

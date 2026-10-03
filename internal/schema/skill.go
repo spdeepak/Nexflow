@@ -32,6 +32,7 @@ type SkillCreate struct {
 	Metadata    *SkillMetadata         `json:"metadata,omitempty,omitzero"`
 	Scope       enums.SkillScope       `json:"scope"`
 	StorageUri  *string                `json:"storageUri,omitempty,omitzero"`
+	GlobalSkill *bool                  `json:"globalSkill"`
 	Title       string                 `json:"title"`
 }
 

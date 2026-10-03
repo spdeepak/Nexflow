@@ -1,7 +1,7 @@
 -- name: CreateSkill :one
-INSERT INTO skills (id, user_id, scope, title, content_type, content, storage_uri, metadata)
+INSERT INTO skills (id, user_id, scope, title, content_type, content, storage_uri, global_skill, metadata)
 VALUES (sqlc.arg('id'), sqlc.arg('user_id'), sqlc.arg('scope'), sqlc.arg('title'), sqlc.arg('content_type'),
-        sqlc.arg('content'), sqlc.arg('storage_uri'), sqlc.arg('metadata'))
+        sqlc.arg('content'), sqlc.arg('storage_uri'), sqlc.arg('global_skill'), sqlc.arg('metadata'))
 RETURNING id, user_id, scope, title, content_type, content, storage_uri, metadata, is_active, created_at, updated_at;
 
 -- name: GetSkill :one
@@ -12,6 +12,7 @@ SELECT id,
        content_type,
        content,
        storage_uri,
+       global_skill,
        metadata,
        is_active,
        created_at,
@@ -27,6 +28,7 @@ SELECT id,
        content_type,
        content,
        storage_uri,
+       global_skill,
        metadata,
        is_active,
        created_at,
@@ -46,6 +48,7 @@ SELECT id,
        content_type,
        content,
        storage_uri,
+       global_skill,
        metadata,
        is_active,
        created_at,
@@ -64,10 +67,43 @@ SET title        = COALESCE(sqlc.narg('title'), title),
     metadata     = COALESCE(sqlc.narg('metadata'), metadata),
     updated_at   = datetime('now')
 WHERE id = sqlc.arg('id')
-RETURNING id, user_id, scope, title, content_type, content, storage_uri, metadata, is_active, created_at, updated_at;
+RETURNING id, user_id, scope, title, content_type, content, storage_uri, global_skill, metadata, is_active, created_at, updated_at;
 
 -- name: DeleteSkill :exec
 DELETE
 FROM skills
 WHERE id = sqlc.arg('id')
   and user_id = sqlc.arg('user_id');
+
+-- name: GetSkillByTitle :one
+SELECT id,
+       user_id,
+       scope,
+       title,
+       content_type,
+       content,
+       storage_uri,
+       global_skill,
+       metadata,
+       is_active,
+       created_at,
+       updated_at
+FROM skills
+WHERE title = ?1;
+
+-- name: GetSkillsByContentTypeAndScope :many
+SELECT id,
+       user_id,
+       scope,
+       title,
+       content_type,
+       content,
+       storage_uri,
+       global_skill,
+       metadata,
+       is_active,
+       created_at,
+       updated_at
+FROM skills
+WHERE content_type = ?1
+  AND scope = ?2;

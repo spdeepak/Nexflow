@@ -74,6 +74,10 @@ func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 stri
 }
 
 func (a *App) GetSkill() ([]schema.Skill, error) {
+	if err := a.skillService.SyncGlobalSkills(a.ctx, a.deviceID); err != nil {
+		slog.ErrorContext(a.ctx, "Failed to sync global skills", "error", err)
+	}
+
 	items, err := a.skillService.GetAllAvailableSkill(a.ctx)
 	if err != nil {
 		slog.ErrorContext(a.ctx, "Error getting skill", "error", err)
