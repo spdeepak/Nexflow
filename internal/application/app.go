@@ -69,15 +69,14 @@ func (a *App) GetUsername() (string, error) {
 
 func (a *App) Validate(obj any) error {
 	err := a.validator.Struct(obj)
-	if err != nil {
-		var errors strings.Builder
-		errors.WriteString("Invalid field values: ")
-		for _, ve := range err.(validator.ValidationErrors) {
-			ve.Field()
-			errors.WriteString(ve.StructField())
-			errors.WriteString(", ")
-		}
-		return fmt.Errorf("%s", errors.String())
+	if err == nil {
+		return nil
 	}
-	return nil
+	var msg strings.Builder
+	msg.WriteString("Invalid field values: ")
+	for _, ve := range err.(validator.ValidationErrors) {
+		msg.WriteString(ve.StructField())
+		msg.WriteString(", ")
+	}
+	return fmt.Errorf("%s", msg.String())
 }

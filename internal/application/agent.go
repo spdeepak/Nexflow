@@ -35,11 +35,7 @@ func (a *App) GetRootAgents() ([]schema.Agent, error) {
 }
 
 func (a *App) GetAgent(id string) (schema.AgentDetail, error) {
-	agent, err := a.agentService.GetAgentDetail(a.ctx, uuid.MustParse(id))
-	if err != nil {
-		return agent, err
-	}
-	return agent, nil
+	return a.agentService.GetAgentDetail(a.ctx, uuid.MustParse(id))
 }
 
 func (a *App) DeleteAgent(id string) error {

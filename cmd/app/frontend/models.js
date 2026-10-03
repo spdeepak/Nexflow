@@ -24,7 +24,7 @@ function renderModelList(container) {
             const statusText = c.isActive ? 'Active' : 'Inactive';
 
             html += `
-                <div class="card" onclick="showModelDetail('${c.id}')" style="cursor:pointer">
+                <div class="card clickable" onclick="showModelDetail('${c.id}')">
                     <div class="card-title">${escapeHtml(c.title)}</div>
                     <div class="card-body">
                         <div class="card-label"><b>Provider:</b> ${escapeHtml(c.provider)}</div>
@@ -50,15 +50,15 @@ async function showModelDetail(modelId) {
 
     let html = `
         <div class="page-header">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div class="page-header-left">
                 <button class="skill-back-btn" onclick="renderModels(document.getElementById('view-container'))" title="Back to models">
                     ${iconSvg('back', 'icon back-icon')}
                 </button>
                 <h1>${escapeHtml(model.title)}</h1>
             </div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-small" onclick="showEditModelModal('${model.id}')">Edit</button>
-                <button class="btn btn-small" style="background:#e74c3c;color:#fff" onclick="confirmDeleteModel('${model.id}', '${escapeHtml(model.title)}')">Delete</button>
+            <div class="page-header-actions">
+                <button class="btn btn-secondary btn-small" onclick="showEditModelModal('${model.id}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="confirmDeleteModel('${model.id}', '${escapeHtml(model.title)}')">Delete</button>
             </div>
         </div>
         <div class="skill-detail-card">

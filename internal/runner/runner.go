@@ -77,10 +77,9 @@ type (
 		agentService            agents.Service
 		modelCredentialsService modelcredentials.Service
 		sessionService          session.Service
-		//skillsService           agentskills.Service
-		tokenStore mcpstore.TokenStore
-		userID     uuid.UUID
-		appName    string
+		tokenStore              mcpstore.TokenStore
+		userID                  uuid.UUID
+		appName                 string
 	}
 	Runner interface {
 		Run(ctx context.Context, req Request, onEvent OnEventFunc, opts ...Option) error
@@ -183,7 +182,7 @@ func (r *runner) Run(ctx context.Context, req Request, onEvent OnEventFunc, opts
 				return err
 			}
 			stageAgent = enforced
-			slog.Info("Re-running root with delegation directive after direct answer", "rootAgent", rootAgent.Name, "attempt", attempt)
+			slog.InfoContext(ctx, "Re-running root with delegation directive after direct answer", "rootAgent", rootAgent.Name, "attempt", attempt)
 		}
 		if _, err = r.runStage(ctx, stageAgent, sessionID, userID, rootInput, wrapEvent); err != nil {
 			return err
@@ -337,7 +336,8 @@ func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent sche
 		cfg.SubAgents = adkSubAgents
 	}
 
-	slog.Info("LLM agent config", "cfg", cfg, "instruction", cfg.Instruction)
+	slog.DebugContext(ctx, "Built root agent with sub-agents",
+		"rootAgent", rootAgent.Name, "subAgents", len(cfg.SubAgents), "toolsets", len(cfg.Toolsets))
 
 	agent, err := llmagent.New(cfg)
 	if err != nil {

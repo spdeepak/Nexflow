@@ -26,7 +26,6 @@ type (
 		CreateSkill(ctx context.Context, arg schema.SkillCreate, userID uuid.UUID) (schema.Skill, error)
 		DeleteSkill(ctx context.Context, userId, id uuid.UUID) error
 		GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, error)
-		GetAvailableSkill(ctx context.Context, arg GetAvailableSkillParams) ([]GetAvailableSkillRow, error)
 		GetSkill(ctx context.Context, id uuid.UUID) (Skill, error)
 		GetSkillByTitle(ctx context.Context, title string) (Skill, error)
 		SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error
@@ -149,11 +148,6 @@ func (s *service) DeleteSkill(ctx context.Context, userId, id uuid.UUID) error {
 		return errors.SkillDeletionFailed
 	}
 	return nil
-}
-
-func (s *service) GetAvailableSkill(ctx context.Context, arg GetAvailableSkillParams) ([]GetAvailableSkillRow, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (s *service) GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, error) {
@@ -312,7 +306,7 @@ func (s *service) UpdateSkill(ctx context.Context, id uuid.UUID, arg schema.Skil
 	if arg.Title != nil {
 		updateParams.Title = sql.NullString{String: *arg.Title, Valid: true}
 	}
-	slog.InfoContext(ctx, "updating skill", "updateParams", updateParams, "arg", arg)
+	slog.DebugContext(ctx, "updating skill", "id", id)
 	skill, err := s.querier.UpdateSkill(ctx, updateParams)
 	if err != nil {
 		return Skill{}, err

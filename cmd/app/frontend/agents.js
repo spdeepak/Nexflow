@@ -29,7 +29,7 @@ function renderAgentList(container) {
             const statusText = a.isActive ? 'Active' : 'Inactive';
 
             html += `
-                <div class="card" onclick="openRootAgentDetail('${a.id}')" style="cursor:pointer">
+                <div class="card clickable" onclick="openRootAgentDetail('${a.id}')">
                     <div class="card-title">${escapeHtml(a.name || a.id)}</div>
                     <div class="card-body">
                         ${a.description ? `<div class="card-label">${escapeHtml(a.description)}</div>` : ''}
@@ -72,7 +72,7 @@ async function showAgentDetail(agentId) {
             }
             subAgentsHtml += '</div>';
         } else {
-            subAgentsHtml = '<div class="empty-state" style="padding:20px">No sub-agents</div>';
+            subAgentsHtml = '<div class="empty-state compact">No sub-agents</div>';
         }
     } catch (e) {
         console.error('Failed to load sub-agents:', e);
@@ -80,16 +80,16 @@ async function showAgentDetail(agentId) {
 
     let html = `
         <div class="page-header">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div class="page-header-left">
                 <button class="skill-back-btn" onclick="goBackInAgentStack()" title="Back">
                     ${iconSvg('back', 'icon back-icon')}
                 </button>
                 <h1>${escapeHtml(detail.name)}</h1>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="page-header-actions">
                 <button class="btn btn-primary btn-small" onclick="showCreateSubAgentModal('${detail.id}', '${escapeHtml(detail.name)}')">Create Sub Agent</button>
-                <button class="btn btn-small" onclick="showEditAgentModal('${detail.id}')">Edit</button>
-                <button class="btn btn-small" style="background:#e74c3c;color:#fff" onclick="confirmDeleteAgent('${detail.id}', '${escapeHtml(detail.name)}')">Delete</button>
+                <button class="btn btn-secondary btn-small" onclick="showEditAgentModal('${detail.id}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="confirmDeleteAgent('${detail.id}', '${escapeHtml(detail.name)}')">Delete</button>
             </div>
         </div>
         <div class="skill-detail-card">
@@ -595,7 +595,7 @@ function renderSubAgentRow(sa, index, total) {
 
 function renderSkillsSection(skills) {
     if (skills.length === 0) {
-        return '<div class="empty-state" style="padding:20px">No skills attached</div>';
+        return '<div class="empty-state compact">No skills attached</div>';
     }
     let html = '<div class="kb-list">';
     for (const s of skills) {
@@ -603,7 +603,7 @@ function renderSkillsSection(skills) {
         const statusText = s.isActive ? 'Active' : 'Inactive';
         html += `
             <div class="kb-item">
-                <span class="kb-item-title" onclick="showSkillDetail('${s.id}')" style="cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color 0.15s" onmouseenter="this.style.textDecorationColor='var(--accent)'" onmouseleave="this.style.textDecorationColor='transparent'">${escapeHtml(s.title || s.id)}</span>
+                <span class="kb-item-title link" onclick="showSkillDetail('${s.id}')">${escapeHtml(s.title || s.id)}</span>
                 <div class="kb-item-actions">
                     <span class="card-subtitle">${escapeHtml(s.contentType)}</span>
                     <span class="status ${statusClass}">${statusText}</span>
@@ -616,7 +616,7 @@ function renderSkillsSection(skills) {
 
 function renderMcpsSection(mcps) {
     if (mcps.length === 0) {
-        return '<div class="empty-state" style="padding:20px">No MCP servers attached</div>';
+        return '<div class="empty-state compact">No MCP servers attached</div>';
     }
     let html = '<div class="kb-list">';
     for (const m of mcps) {
@@ -640,7 +640,7 @@ function rerenderSubAgentList() {
     const container = document.getElementById('sub-agents-container');
     if (!container) return;
     if (currentSubAgents.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding:20px">No sub-agents</div>';
+        container.innerHTML = '<div class="empty-state compact">No sub-agents</div>';
         return;
     }
     let html = '<div class="kb-list">';

@@ -110,19 +110,8 @@ func (s *service) GetAgent(ctx context.Context, id uuid.UUID) (schema.Agent, err
 	if err != nil {
 		return schema.Agent{}, err
 	}
-	apiAgent := schema.Agent{
-		CreatedAt:         agent.CreatedAt,
-		CredentialSource:  agent.CredentialSource,
-		Description:       agent.Description.String,
-		ID:                agent.ID,
-		Instruction:       agent.Instruction.String,
-		IsActive:          agent.IsActive,
-		Mode:              agent.Mode,
-		ModelCredentialID: agent.ModelCredentialID,
-		ModelName:         agent.ModelName.String,
-		Name:              agent.Name,
-		UpdatedAt:         agent.UpdatedAt,
-	}
+	apiAgent := toSchemaAgent(agent)
+	apiAgent.UpdatedAt = agent.UpdatedAt
 	if agent.GlobalInstruction.Valid {
 		apiAgent.GlobalInstruction = agent.GlobalInstruction.String
 	}
@@ -232,20 +221,9 @@ func (s *service) GetSubAgents(ctx context.Context, parentAgentID uuid.UUID) ([]
 	}
 	apiAgents := make([]schema.Agent, 0, len(childrenAgents))
 	for _, agent := range childrenAgents {
-		position := int(agent.Position)
-		apiAgents = append(apiAgents, schema.Agent{
-			CreatedAt:         agent.CreatedAt,
-			CredentialSource:  agent.CredentialSource,
-			Description:       agent.Description.String,
-			ID:                agent.ID,
-			Instruction:       agent.Instruction.String,
-			IsActive:          agent.IsActive,
-			Mode:              agent.Mode,
-			ModelCredentialID: agent.ModelCredentialID,
-			ModelName:         agent.ModelName.String,
-			Name:              agent.Name,
-			Position:          position,
-		})
+		child := toSchemaAgent(agent)
+		child.Position = int(agent.Position)
+		apiAgents = append(apiAgents, child)
 	}
 	return apiAgents, nil
 }
@@ -282,20 +260,10 @@ func (s *service) ListRootAgents(ctx context.Context) ([]schema.Agent, error) {
 	}
 	apiAgents := make([]schema.Agent, len(agents))
 	for i, agent := range agents {
-		apiAgents[i] = schema.Agent{
-			CreatedAt:         agent.CreatedAt,
-			CredentialSource:  agent.CredentialSource,
-			Description:       agent.Description.String,
-			GlobalInstruction: util.GetStringFromSQLNullString(agent.GlobalInstruction),
-			ID:                agent.ID,
-			Instruction:       agent.Instruction.String,
-			IsActive:          agent.IsActive,
-			Mode:              agent.Mode,
-			ModelCredentialID: agent.ModelCredentialID,
-			ModelName:         agent.ModelName.String,
-			Name:              agent.Name,
-			UpdatedAt:         agent.UpdatedAt,
-		}
+		root := toSchemaAgent(agent)
+		root.GlobalInstruction = util.GetStringFromSQLNullString(agent.GlobalInstruction)
+		root.UpdatedAt = agent.UpdatedAt
+		apiAgents[i] = root
 	}
 	return apiAgents, nil
 }
@@ -343,4 +311,22 @@ func toRawMessage(cfg *genai.GenerateContentConfig) json.RawMessage {
 		return json.RawMessage{}
 	}
 	return raw
+}
+
+// toSchemaAgent maps the columns every agent query has in common onto the API
+// schema. Queries layer their own extras (position, timestamps, instructions)
+// and JSON overlays on top, so this stays limited to the shared scalar columns.
+func toSchemaAgent(agent Agent) schema.Agent {
+	return schema.Agent{
+		CreatedAt:         agent.CreatedAt,
+		CredentialSource:  agent.CredentialSource,
+		Description:       agent.Description.String,
+		ID:                agent.ID,
+		Instruction:       agent.Instruction.String,
+		IsActive:          agent.IsActive,
+		Mode:              agent.Mode,
+		ModelCredentialID: agent.ModelCredentialID,
+		ModelName:         agent.ModelName.String,
+		Name:              agent.Name,
+	}
 }

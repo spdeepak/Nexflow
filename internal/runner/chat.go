@@ -169,25 +169,25 @@ func (c *Chat) GetSession(ctx context.Context, id uuid.UUID) (sessions.Session, 
 
 // ListSessions returns the chat threads for a user, newest first.
 func (c *Chat) ListSessions(ctx context.Context, userID uuid.UUID) ([]schema.Session, error) {
-	if sessionList, err := c.sessionQuery.ListSessions(ctx, sessions.ListSessionsParams{
+	sessionList, err := c.sessionQuery.ListSessions(ctx, sessions.ListSessionsParams{
 		UserID:  userID.String(),
 		AppName: c.appName,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, err
-	} else {
-		schemaSessions := make([]schema.Session, 0, len(sessionList))
-		for _, sess := range sessionList {
-			schemaSessions = append(schemaSessions, schema.Session{
-				AppName:     sess.AppName,
-				CreatedAt:   sess.CreatedAt,
-				LastUpdate:  sess.LastUpdate,
-				ID:          sess.ID,
-				RootAgentID: sess.RootAgentID,
-				UserID:      sess.UserID,
-			})
-		}
-		return schemaSessions, nil
 	}
+	schemaSessions := make([]schema.Session, 0, len(sessionList))
+	for _, sess := range sessionList {
+		schemaSessions = append(schemaSessions, schema.Session{
+			AppName:     sess.AppName,
+			CreatedAt:   sess.CreatedAt,
+			LastUpdate:  sess.LastUpdate,
+			ID:          sess.ID,
+			RootAgentID: sess.RootAgentID,
+			UserID:      sess.UserID,
+		})
+	}
+	return schemaSessions, nil
 }
 
 // DeleteSession removes a chat thread and all of its events.
@@ -200,64 +200,64 @@ func (c *Chat) DeleteSession(ctx context.Context, id uuid.UUID) error {
 
 // ListEvents returns a session's events in sequence order.
 func (c *Chat) ListEvents(ctx context.Context, sessionID uuid.UUID) ([]schema.Event, error) {
-	if eventsList, err := c.eventsQuery.ListSessionEvents(ctx, events.ListSessionEventsParams{
+	eventsList, err := c.eventsQuery.ListSessionEvents(ctx, events.ListSessionEventsParams{
 		Limit:        -1,
 		Offset:       0,
 		SessionID:    sessionID,
 		InvocationID: nil,
 		Author:       nil,
 		Role:         nil,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, err
-	} else {
-		schemaEvents := make([]schema.Event, 0, len(eventsList))
-		for _, event := range eventsList {
-			schemaEvents = append(schemaEvents, schema.Event{
-				ID:             &event.ID,
-				SessionID:      &event.SessionID,
-				InvocationID:   &event.InvocationID,
-				Seq:            &event.Seq,
-				Branch:         &event.Branch,
-				IsolationScope: &event.IsolationScope,
-				Author:         &event.Author,
-				Role:           &event.Role,
-				ContentJson:    toEventJSON(event.ContentJson),
-				ActionsJson:    toEventJSON(event.ActionsJson),
-				IsPartial:      &event.IsPartial,
-				IsFinal:        &event.IsFinal,
-				TokenUsage:     toEventJSON(event.TokenUsage),
-				OutputJson:     toEventJSON(event.OutputJson),
-				CreatedAt:      &event.CreatedAt,
-			})
-		}
-		return schemaEvents, nil
 	}
+	schemaEvents := make([]schema.Event, 0, len(eventsList))
+	for _, event := range eventsList {
+		schemaEvents = append(schemaEvents, schema.Event{
+			ID:             &event.ID,
+			SessionID:      &event.SessionID,
+			InvocationID:   &event.InvocationID,
+			Seq:            &event.Seq,
+			Branch:         &event.Branch,
+			IsolationScope: &event.IsolationScope,
+			Author:         &event.Author,
+			Role:           &event.Role,
+			ContentJson:    toEventJSON(event.ContentJson),
+			ActionsJson:    toEventJSON(event.ActionsJson),
+			IsPartial:      &event.IsPartial,
+			IsFinal:        &event.IsFinal,
+			TokenUsage:     toEventJSON(event.TokenUsage),
+			OutputJson:     toEventJSON(event.OutputJson),
+			CreatedAt:      &event.CreatedAt,
+		})
+	}
+	return schemaEvents, nil
 }
 
 // GetRun returns a run by id.
 func (c *Chat) GetRun(ctx context.Context, id uuid.UUID) (schema.Run, error) {
-	if run, err := c.runsQuery.GetRun(ctx, id); err != nil {
+	run, err := c.runsQuery.GetRun(ctx, id)
+	if err != nil {
 		return schema.Run{}, err
-	} else {
-		var finishedAt *time.Time
-		if run.FinishedAt.Valid {
-			finishedAt = &run.FinishedAt.Time
-		}
-		var runError string
-		if run.Error.Valid {
-			runError = run.Error.String
-		}
-		return schema.Run{
-			ID:           &run.ID,
-			SessionID:    &run.SessionID,
-			InvocationID: &run.InvocationID,
-			RootAgentID:  &run.RootAgentID,
-			Status:       &run.Status,
-			StartedAt:    &run.StartedAt,
-			FinishedAt:   finishedAt,
-			Error:        &runError,
-		}, nil
 	}
+	var finishedAt *time.Time
+	if run.FinishedAt.Valid {
+		finishedAt = &run.FinishedAt.Time
+	}
+	var runError string
+	if run.Error.Valid {
+		runError = run.Error.String
+	}
+	return schema.Run{
+		ID:           &run.ID,
+		SessionID:    &run.SessionID,
+		InvocationID: &run.InvocationID,
+		RootAgentID:  &run.RootAgentID,
+		Status:       &run.Status,
+		StartedAt:    &run.StartedAt,
+		FinishedAt:   finishedAt,
+		Error:        &runError,
+	}, nil
 }
 
 // nullString converts an optional run error to a sql.NullString.
@@ -269,7 +269,7 @@ func nullString(err error) sql.NullString {
 }
 
 func toEventJSON(msg json.RawMessage) *map[string]any {
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	_ = json.Unmarshal(msg, &m)
 	return &m
 }

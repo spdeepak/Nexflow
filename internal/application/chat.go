@@ -88,11 +88,11 @@ func (a *App) SendMessageSession(sessionID string, message string) (schema.Resul
 		return schema.Result{}, fmt.Errorf("session not found: %w", err)
 	}
 
-	if result, err := a.chatService.Run(a.ctx, parsedSessionID, sess.RootAgentID, message, runner.Options{Emitter: a.emit}); err != nil {
+	result, err := a.chatService.Run(a.ctx, parsedSessionID, sess.RootAgentID, message, runner.Options{Emitter: a.emit})
+	if err != nil {
 		return schema.Result{}, err
-	} else {
-		return result, nil
 	}
+	return result, nil
 }
 
 // ConfirmSession resumes an interrupted chat run by submitting the
@@ -114,18 +114,18 @@ func (a *App) ConfirmSession(sessionID string, callID string, confirmed bool, me
 		return schema.Result{}, fmt.Errorf("session not found: %w", err)
 	}
 
-	if result, err := a.chatService.Run(a.ctx, parsedSessionID, sess.RootAgentID, "", runner.Options{
+	result, err := a.chatService.Run(a.ctx, parsedSessionID, sess.RootAgentID, "", runner.Options{
 		Emitter: a.emit,
 		Resume: &runner.InterruptInfo{
 			CallID:    callID,
 			Confirmed: confirmed,
 			Message:   message,
 		},
-	}); err != nil {
+	})
+	if err != nil {
 		return schema.Result{}, err
-	} else {
-		return result, nil
 	}
+	return result, nil
 }
 
 // ListEvents returns a session's events in sequence order.

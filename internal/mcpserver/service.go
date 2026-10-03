@@ -58,7 +58,7 @@ func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (sc
 
 func (s *service) DeleteMCPServer(ctx context.Context, id uuid.UUID) error {
 	if err := s.querier.DeleteMCPServer(ctx, id); err != nil {
-		slog.ErrorContext(ctx, "error deleting MCP server", "id", id)
+		slog.ErrorContext(ctx, "Failed to delete MCP server", "id", id, "error", err)
 		return err
 	}
 	return nil

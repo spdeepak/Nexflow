@@ -23,7 +23,7 @@ function renderMCPList(container) {
             const statusText = m.isActive ? 'Active' : 'Inactive';
 
             html += `
-                <div class="card" onclick="showMCPDetail('${m.id}')" style="cursor:pointer">
+                <div class="card clickable" onclick="showMCPDetail('${m.id}')">
                     <div class="card-title">${escapeHtml(m.name)}</div>
                     <div class="card-body">
                         <div class="card-label"><b>Transport:</b> ${escapeHtml(m.transport)}</div>
@@ -55,15 +55,15 @@ async function showMCPDetail(mcpId) {
 
     let html = `
         <div class="page-header">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div class="page-header-left">
                 <button class="skill-back-btn" onclick="renderMCPs(document.getElementById('view-container'))" title="Back to MCPs">
                     ${iconSvg('back', 'icon back-icon')}
                 </button>
                 <h1>${escapeHtml(detail.name)}</h1>
             </div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-small" onclick="showEditMCPModal('${detail.id}')">Edit</button>
-                <button class="btn btn-small" style="background:#e74c3c;color:#fff" onclick="confirmDeleteMCP('${detail.id}', '${escapeHtml(detail.name)}')">Delete</button>
+            <div class="page-header-actions">
+                <button class="btn btn-secondary btn-small" onclick="showEditMCPModal('${detail.id}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="confirmDeleteMCP('${detail.id}', '${escapeHtml(detail.name)}')">Delete</button>
             </div>
         </div>
         <div class="skill-detail-card">

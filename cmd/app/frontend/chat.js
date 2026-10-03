@@ -437,15 +437,6 @@ function onChatEvent(payload) {
     if (!payload) return;
 
     const ev = payload.event;
-    if (ev) {
-        window.__chatTrace = window.__chatTrace || [];
-        window.__chatTrace.push({
-            agent: payload.agent, author: ev.author, final: payload.final,
-            partial: ev.partial, role: ev.content && ev.content.role
-        });
-        console.debug('[chat:event]', window.__chatTrace[window.__chatTrace.length - 1]);
-    }
-
     if (!ev) {
         applyFinalState(payload);
         return;
@@ -523,7 +514,7 @@ function onChatInterrupt(interrupt) {
             <textarea id="chat-confirm-note" rows="2" placeholder="Add extra info (optional)"></textarea>
             <div class="chat-confirm-actions">
                 <button class="btn btn-primary btn-small" onclick="resumeChat(true, this)">Approve</button>
-                <button class="btn btn-small" onclick="resumeChat(false, this)">Reject</button>
+                <button class="btn btn-secondary btn-small" onclick="resumeChat(false, this)">Reject</button>
             </div>
         </div>
         <div class="bubble-time"><span>Awaiting your decision…</span></div>`;

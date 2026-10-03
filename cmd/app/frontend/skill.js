@@ -22,10 +22,10 @@ function renderSkillList(container) {
         for (const k of skillListData) {
             html += `<div class="kb-item" data-id="${k.id}" data-title="${escapeHtml(k.title)}">
                 ${iconSvg('bullet', 'skill-bullet')}
-                <span class="kb-item-title" onclick="showSkillDetail('${k.id}')" style="cursor:pointer;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color 0.15s" onmouseenter="this.style.textDecorationColor='var(--accent)'" onmouseleave="this.style.textDecorationColor='transparent'">${escapeHtml(k.title)}</span>
+                <span class="kb-item-title link" onclick="showSkillDetail('${k.id}')">${escapeHtml(k.title)}</span>
                 <div class="kb-item-actions">
                     <button class="btn btn-secondary btn-small" onclick="showEditSkillModal(skillListData.find(i => i.id === '${k.id}'))">Edit</button>
-                    <button class="btn btn-small" style="background:#e74c3c;color:#fff" onclick="confirmDeleteSkill('${k.id}', '${escapeHtml(k.title)}')">Delete</button>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteSkill('${k.id}', '${escapeHtml(k.title)}')">Delete</button>
                 </div>
             </div>`;
         }
@@ -81,15 +81,15 @@ async function showSkillDetail(skillId) {
 
     let html = `
         <div class="page-header">
-            <div style="display:flex;align-items:center;gap:8px">
+            <div class="page-header-left">
                 <button class="skill-back-btn" onclick="renderSkill(document.getElementById('view-container'))" title="Back to skills">
                     ${iconSvg('back', 'icon back-icon')}
                 </button>
                 <h1>${escapeHtml(skill.title)}</h1>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="page-header-actions">
                 <button class="btn btn-secondary btn-small" onclick="showEditSkillModal(skillListData.find(i => i.id === '${skill.id}'))">Edit</button>
-                <button class="btn btn-small" style="background:#e74c3c;color:#fff" onclick="confirmDeleteSkill('${skill.id}', '${escapeHtml(skill.title)}')">Delete</button>
+                <button class="btn btn-danger btn-small" onclick="confirmDeleteSkill('${skill.id}', '${escapeHtml(skill.title)}')">Delete</button>
             </div>
         </div>
         <div class="skill-detail-card">
@@ -323,7 +323,6 @@ function confirmDeleteSkill(skillId, skillTitle) {
 
 async function deleteSkill(skillId) {
     try {
-        console.log("deleting skill: ", skillId)
         await window.go.application.App.DeleteSkill(skillId);
         hideModal();
         renderView();
