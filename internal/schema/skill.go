@@ -31,7 +31,7 @@ type SkillCreate struct {
 	ContentType enums.SkillContentType `json:"contentType"`
 	Metadata    *SkillMetadata         `json:"metadata,omitempty,omitzero"`
 	Scope       enums.SkillScope       `json:"scope"`
-	StorageUri  *string                `json:"storageUri,omitempty,omitzero"`
+	StorageUri  *string                `json:"storageUri,omitempty,omitzero" validate:"required_if=ContentType storageUri"`
 	GlobalSkill *bool                  `json:"globalSkill"`
 	Title       string                 `json:"title"`
 }
@@ -42,6 +42,6 @@ type SkillUpdate struct {
 	ContentType *enums.SkillContentType `json:"contentType,omitempty,omitzero"`
 	IsActive    *bool                   `json:"isActive,omitempty,omitzero"`
 	Metadata    *SkillMetadata          `json:"metadata,omitempty,omitzero"`
-	StorageUri  *string                 `json:"storageUri,omitempty,omitzero"`
+	StorageUri  *string                 `json:"storageUri,omitempty,omitzero" validate:"required_if=ContentType storageUri"`
 	Title       *string                 `json:"title,omitempty,omitzero"`
 }

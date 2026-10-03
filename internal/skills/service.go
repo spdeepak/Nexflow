@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -52,11 +54,18 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 	if arg.Content != nil {
 		content = sql.NullString{String: *arg.Content, Valid: true}
 	}
-	if arg.StorageUri != nil {
-		storageUri = sql.NullString{String: *arg.StorageUri, Valid: true}
-		if arg.GlobalSkill != nil {
-			globalSkill = *arg.GlobalSkill
+	if arg.GlobalSkill != nil {
+		globalSkill = *arg.GlobalSkill
+	}
+	if arg.ContentType == enums.SkillContentTypeStorageUri {
+		skillMDPath, err := resolveSkillStoragePath(arg.StorageUri)
+		if err != nil {
+			slog.ErrorContext(ctx, "invalid skill location for storage uri skill", "err", err, "storageUri", arg.StorageUri)
+			return schema.Skill{}, errors.SkillInvalidLocation
 		}
+		storageUri = sql.NullString{String: skillMDPath, Valid: true}
+	} else if arg.StorageUri != nil {
+		storageUri = sql.NullString{String: *arg.StorageUri, Valid: true}
 	}
 	id, _ := uuid.NewV7()
 	createSkillParams := CreateSkillParams{
@@ -90,6 +99,35 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 		UpdatedAt:   skill.UpdatedAt,
 		UserID:      skill.UserID,
 	}, nil
+}
+
+// resolveSkillStoragePath validates the location of a storage uri skill and
+// returns the path of its SKILL.md file. The location may either be the skill
+// folder itself or a direct path to its SKILL.md file. It returns an error when
+// the location does not exist or does not contain a SKILL.md file.
+func resolveSkillStoragePath(storageUri *string) (string, error) {
+	if storageUri == nil || strings.TrimSpace(*storageUri) == "" {
+		return "", fmt.Errorf("storage uri is empty")
+	}
+
+	path := strings.TrimSpace(*storageUri)
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("cannot access skill location %q: %w", path, err)
+	}
+
+	if info.IsDir() {
+		skillMDPath := filepath.Join(path, "SKILL.md")
+		if _, err = os.Stat(skillMDPath); err != nil {
+			return "", fmt.Errorf("SKILL.md not found in folder %q: %w", path, err)
+		}
+		return skillMDPath, nil
+	}
+
+	if filepath.Base(path) != "SKILL.md" {
+		return "", fmt.Errorf("skill location %q is not a SKILL.md file", path)
+	}
+	return path, nil
 }
 
 func (s *service) DeleteSkill(ctx context.Context, userId, id uuid.UUID) error {

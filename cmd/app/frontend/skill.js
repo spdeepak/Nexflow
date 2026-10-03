@@ -123,6 +123,7 @@ function showCreateSkillModal() {
                 <option value="text">text</option>
 <!--                <option value="markdown">markdown</option>-->
                 <option value="pdf">pdf</option>
+                <option value="storageUri">storageUri</option>
 <!--                <option value="csv">csv</option>-->
 <!--                <option value="json">json</option>-->
             </select>
@@ -130,6 +131,14 @@ function showCreateSkillModal() {
         <div class="form-group" id="kb-file-group">
             <label for="kb-file">Upload PDF</label>
             <input type="file" id="kb-file" accept=".pdf">
+        </div>
+        <div class="form-group" id="kb-folder-group">
+            <label for="kb-folder">Skill Folder *</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="kb-folder" readonly placeholder="No folder selected" style="flex:1">
+                <button type="button" class="btn btn-secondary" onclick="pickSkillFolder()">Select Folder</button>
+            </div>
+            <small style="color:var(--text-muted)">The folder must contain a SKILL.md file</small>
         </div>
         <div class="form-group" id="kb-content-group">
             <label for="kb-content">Skill</label>
@@ -146,21 +155,45 @@ function showCreateSkillModal() {
     showModal('Create Skill', body, submitCreateSkill);
 
     const typeSelect = document.getElementById('kb-type');
+    const titleInput = document.getElementById('kb-title');
     const fileGroup = document.getElementById('kb-file-group');
     const contentGroup = document.getElementById('kb-content-group');
+    const folderGroup = document.getElementById('kb-folder-group');
 
     function toggleInputs() {
+        fileGroup.style.display = 'none';
+        contentGroup.style.display = 'none';
+        folderGroup.style.display = 'none';
+
+        const isStorageUri = typeSelect.value === 'storageUri';
+        titleInput.disabled = isStorageUri;
+
         if (typeSelect.value === 'pdf') {
             fileGroup.style.display = '';
-            contentGroup.style.display = 'none';
+        } else if (isStorageUri) {
+            folderGroup.style.display = '';
         } else {
-            fileGroup.style.display = 'none';
             contentGroup.style.display = '';
         }
     }
 
     typeSelect.addEventListener('change', toggleInputs);
     toggleInputs();
+}
+
+async function pickSkillFolder() {
+    try {
+        const dir = await window.go.application.App.PickSkillFolder();
+        if (dir) {
+            document.getElementById('kb-folder').value = dir;
+            const folderName = dir.split(/[\\/]/).filter(Boolean).pop();
+            if (folderName) {
+                document.getElementById('kb-title').value = folderName;
+            }
+        }
+    } catch (err) {
+        showToast('Failed to open folder picker: ' + err);
+    }
 }
 
 async function submitCreateSkill() {
@@ -173,7 +206,15 @@ async function submitCreateSkill() {
     };
 
     try {
-        if (contentType === 'pdf') {
+        if (contentType === 'storageUri') {
+            const folder = document.getElementById('kb-folder').value;
+            if (!folder) {
+                showToast('Please select a skill folder');
+                return;
+            }
+            params.storageUri = folder;
+            await window.go.application.App.CreateSkill(params);
+        } else if (contentType === 'pdf') {
             const fileInput = document.getElementById('kb-file');
             const file = fileInput.files[0];
             if (!file) {

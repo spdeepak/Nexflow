@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/errors"
@@ -31,6 +32,20 @@ func (a *App) CreateSkill(params schema.SkillCreate) error {
 	}
 	_, err := a.skillService.CreateSkill(a.ctx, params, a.deviceID)
 	return err
+}
+
+// PickSkillFolder opens a native folder picker so the user can select a skill
+// folder on this machine. It returns an empty string when the dialog is
+// cancelled.
+func (a *App) PickSkillFolder() (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select skill folder (must contain a SKILL.md file)",
+	})
+	if err != nil {
+		slog.ErrorContext(a.ctx, "Failed to open folder picker", "error", err)
+		return "", fmt.Errorf("failed to open folder picker: %w", err)
+	}
+	return dir, nil
 }
 
 func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 string) error {
