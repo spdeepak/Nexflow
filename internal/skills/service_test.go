@@ -72,13 +72,59 @@ func (tf *testFixture) createUser() schema.User {
 }
 
 func TestSyncGlobalSkills(t *testing.T) {
+	// Point os.UserHomeDir() at a fixture home so the test does not depend on
+	// whatever skills happen to be installed on the machine running it.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	globalSkillsDir := filepath.Join(home, ".agents", "skills")
+	skillDir := filepath.Join(globalSkillsDir, "test-skill")
+	require.NoError(t, os.MkdirAll(skillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# Test Skill"), 0o600))
+
+	// A folder without SKILL.md must be ignored.
+	require.NoError(t, os.MkdirAll(filepath.Join(globalSkillsDir, "not-a-skill"), 0o755))
+
 	fixture := newTestFixture(t)
 	user := fixture.createUser()
-	err := fixture.skillService.SyncGlobalSkills(context.Background(), user.ID)
+	ctx := context.Background()
+
+	// Sync creates the skill found on the filesystem.
+	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
+	skill, err := fixture.skillService.GetAllAvailableSkill(ctx)
 	require.NoError(t, err)
+	require.Len(t, skill, 1)
+	require.Equal(t, "test-skill", skill[0].Title)
+	require.NotNil(t, skill[0].StorageUri)
+	require.Equal(t, filepath.Join(skillDir, "SKILL.md"), *skill[0].StorageUri)
+
+	// A second sync must not create duplicates.
+	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
+	skill, err = fixture.skillService.GetAllAvailableSkill(ctx)
+	require.NoError(t, err)
+	require.Len(t, skill, 1)
+
+	// Removing the folder removes the orphaned skill from the DB.
+	require.NoError(t, os.RemoveAll(skillDir))
+	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
+	skill, err = fixture.skillService.GetAllAvailableSkill(ctx)
+	require.NoError(t, err)
+	require.Empty(t, skill)
+}
+
+func TestSyncGlobalSkillsMissingGlobalDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	fixture := newTestFixture(t)
+	user := fixture.createUser()
+
+	require.NoError(t, fixture.skillService.SyncGlobalSkills(context.Background(), user.ID))
 	skill, err := fixture.skillService.GetAllAvailableSkill(context.Background())
 	require.NoError(t, err)
-	require.NotEmpty(t, skill)
+	require.Empty(t, skill)
 }
 
 func TestCreateSkillStorageUriLocation(t *testing.T) {
