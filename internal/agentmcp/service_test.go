@@ -127,7 +127,7 @@ func (tf *testFixture) createMCPServer() schema.MCP {
 	require.Empty(tf.test, createdMCP.AuthType)
 	require.Equal(tf.test, mcpCreate.Command, createdMCP.Command)
 	require.Empty(tf.test, createdMCP.ConfirmationRules)
-	require.Equal(tf.test, mcpCreate.Endpoint, createdMCP.Endpoint)
+	require.Equal(tf.test, mcpCreate.Endpoint, *createdMCP.Endpoint)
 	require.Equal(tf.test, mcpCreate.IsActive, createdMCP.IsActive)
 	require.Equal(tf.test, mcpCreate.RequireConfirmation, createdMCP.RequireConfirmation)
 	require.Equal(tf.test, mcpCreate.Transport, createdMCP.Transport)
