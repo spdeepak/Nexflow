@@ -139,8 +139,6 @@ func main() {
 	_ = mock.Stop()
 }
 
-func enumsPtr[T any](v T) *T { return &v }
-
 func mustMarshal(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b

@@ -25,7 +25,6 @@ import (
 	"google.golang.org/genai"
 
 	"github.com/spdeepak/nexflow/internal/agents"
-	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
@@ -78,10 +77,10 @@ type (
 		agentService            agents.Service
 		modelCredentialsService modelcredentials.Service
 		sessionService          session.Service
-		skillsService           agentskills.Service
-		tokenStore              mcpstore.TokenStore
-		userID                  uuid.UUID
-		appName                 string
+		//skillsService           agentskills.Service
+		tokenStore mcpstore.TokenStore
+		userID     uuid.UUID
+		appName    string
 	}
 	Runner interface {
 		Run(ctx context.Context, req Request, onEvent OnEventFunc, opts ...Option) error
