@@ -24,13 +24,13 @@ func (a *App) CreateModelCredential(params schema.ModelCredentialCreate) error {
 	if params.Scope == enums.CredentialScopeApp {
 		_, err = a.modelService.CreateAppModelCredential(a.ctx, params)
 	} else {
-		_, err = a.modelService.CreateUserModelCredential(a.ctx, a.deviceID, params)
+		_, err = a.modelService.CreateUserModelCredential(a.ctx, a.userID, params)
 	}
 	return err
 }
 
 func (a *App) GetModelCredentials() ([]schema.ModelCredential, error) {
-	modelCredentials, err := a.modelService.GetAvailableModelCredentials(a.ctx, a.deviceID, nil)
+	modelCredentials, err := a.modelService.GetAvailableModelCredentials(a.ctx, a.userID, nil)
 	if err != nil {
 		slog.Error("Error getting model credentials", "error", err)
 		return nil, err
@@ -39,7 +39,7 @@ func (a *App) GetModelCredentials() ([]schema.ModelCredential, error) {
 }
 
 func (a *App) GetModelOptions() []schema.ModelOption {
-	creds, err := a.modelService.GetAvailableModelCredentials(a.ctx, a.deviceID, nil)
+	creds, err := a.modelService.GetAvailableModelCredentials(a.ctx, a.userID, nil)
 	if err != nil {
 		slog.Error("Error getting model options", "error", err)
 		return nil

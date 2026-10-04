@@ -139,7 +139,7 @@ func (a *App) ConnectOAuthMCP(mcpID string) error {
 		return fmt.Errorf("exchanging oauth authorization code: %w", err)
 	}
 
-	if err := a.tokenStore.SaveGrant(ctx, a.deviceID.String(), mcpID, tok); err != nil {
+	if err := a.tokenStore.SaveGrant(ctx, a.deviceID, mcpID, tok); err != nil {
 		return fmt.Errorf("saving oauth grant: %w", err)
 	}
 	return nil
@@ -152,7 +152,7 @@ func (a *App) IsOAuthConnected(mcpID string) (bool, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	_, err := a.tokenStore.LoadGrant(ctx, a.deviceID.String(), mcpID)
+	_, err := a.tokenStore.LoadGrant(ctx, a.deviceID, mcpID)
 	if err == nil {
 		return true, nil
 	}

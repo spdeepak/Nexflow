@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"log/slog"
+	"os/user"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -64,17 +65,31 @@ func main() {
 	deviceQuery := device.New(dbConnection)
 	deviceService := device.NewService(deviceQuery)
 	deviceID := deviceService.GetDeviceDetail(context.Background())
+
+	// Local app user. The device serial is the external identity; the user row
+	// keeps its own UUID key, which is what sessions and owned rows reference.
+	name := ""
+	if currentUser, err := user.Current(); err == nil {
+		name = currentUser.Name
+	}
+	appUser, err := userService.EnsureAppUser(context.Background(), deviceID, name)
+	if err != nil {
+		slog.Error("failed to initialise local app user", "deviceID", deviceID, "error", err)
+		panic(err)
+	}
+	userID := appUser.ID
+
 	// Chat
 	sessionQuery := sessions.New(dbConnection)
 	eventQuery := events.New(dbConnection)
 	runQuery := runs.New(dbConnection)
 	stateQuery := sessionstate.New(dbConnection)
 	mcpStoreQuery := mcpstore.NewTokenStore(mcpstore.New(dbConnection))
-	chatService := runner.NewChat(sessionQuery, eventQuery, runQuery, stateQuery, agentService, modelService, deviceID, "nexflow", mcpStoreQuery)
+	chatService := runner.NewChat(sessionQuery, eventQuery, runQuery, stateQuery, agentService, modelService, userID, "nexflow", mcpStoreQuery)
 
-	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID, mcpStoreQuery)
+	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID, userID, mcpStoreQuery)
 
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "Nexflow",
 		Width:  1200,
 		Height: 800,

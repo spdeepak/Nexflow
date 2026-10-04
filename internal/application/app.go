@@ -28,16 +28,22 @@ type App struct {
 	userService  users.Service
 	chatService  *runner.Chat
 	tokenStore   mcpstore.TokenStore
-	deviceID     uuid.UUID
-	validator    *validator.Validate
+	// deviceID is this machine's hardware serial number (or the persisted
+	// fallback generated on first run when the serial was unavailable).
+	deviceID string
+	// userID is the local app user row bound to this device. The device
+	// serial is the external identity; the row keeps its own UUID key.
+	userID    uuid.UUID
+	validator *validator.Validate
 }
 
-func NewApp(agentService agents.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID uuid.UUID, tokenStore mcpstore.TokenStore) *App {
+func NewApp(agentService agents.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID string, userID uuid.UUID, tokenStore mcpstore.TokenStore) *App {
 	return &App{
 		agentService: agentService,
 		skillService: kbService,
 		modelService: modelService,
 		deviceID:     deviceID,
+		userID:       userID,
 		userService:  userService,
 		chatService:  chatService,
 		mcpService:   mcpService,
@@ -51,20 +57,17 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 func (a *App) GetUsername() (string, error) {
-	appUser, err := a.userService.GetUserByExternalID(a.ctx, a.deviceID.String())
+	// Only consulted when the user row has to be created for the first time.
+	name := ""
+	if currentUser, err := user.Current(); err == nil {
+		name = currentUser.Name
+	}
+	appUser, err := a.userService.EnsureAppUser(a.ctx, a.deviceID, name)
+	if err != nil {
+		return "", err
+	}
 	slog.DebugContext(a.ctx, "user", "appUser", appUser)
-	if err == nil {
-		return appUser.Name, nil
-	}
-	currentUser, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	createAppUser, err := a.userService.CreateAppUser(a.ctx, a.deviceID, currentUser.Name)
-	if err != nil {
-		return "", err
-	}
-	return createAppUser.Name, nil
+	return appUser.Name, nil
 }
 
 func (a *App) Validate(obj any) error {

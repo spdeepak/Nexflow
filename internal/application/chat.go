@@ -1,7 +1,6 @@
 package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,12 +13,11 @@ import (
 )
 
 // currentUser returns the user bound to this device.
-func (a *App) currentUser(ctx context.Context) (uuid.UUID, error) {
-	row, err := a.userService.GetUserByExternalID(ctx, a.deviceID.String())
-	if err != nil {
-		return uuid.Nil, err
+func (a *App) currentUser() (uuid.UUID, error) {
+	if a.userID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("local app user is not initialised")
 	}
-	return row.ID, nil
+	return a.userID, nil
 }
 
 // emit forwards a Wails event to the frontend.
@@ -36,7 +34,7 @@ func (a *App) CreateSession(rootAgentID string) (schema.Session, error) {
 	if err != nil {
 		return schema.Session{}, fmt.Errorf("invalid root agent ID: %w", err)
 	}
-	userID, err := a.currentUser(a.ctx)
+	userID, err := a.currentUser()
 	if err != nil {
 		return schema.Session{}, fmt.Errorf("failed to resolve current user: %w", err)
 	}
@@ -50,7 +48,7 @@ func (a *App) CreateSession(rootAgentID string) (schema.Session, error) {
 
 // ListSessions lists the current user's chat threads, newest first.
 func (a *App) ListSessions() ([]schema.Session, error) {
-	userID, err := a.currentUser(a.ctx)
+	userID, err := a.currentUser()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve current user: %w", err)
 	}

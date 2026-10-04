@@ -117,8 +117,7 @@ func (tf *testFixture) createRootAgent(model schema.ModelCredential) agents.Agen
 
 func (tf *testFixture) createUser() schema.User {
 	tf.test.Helper()
-	id := uuid.New()
-	user, err := tf.userService.CreateAppUser(context.Background(), id, "Deepak")
+	user, err := tf.userService.CreateAppUser(context.Background(), uuid.NewString(), "Deepak")
 	require.NoError(tf.test, err)
 	require.NotNil(tf.test, user)
 	return user

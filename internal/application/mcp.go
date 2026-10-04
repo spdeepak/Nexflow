@@ -12,7 +12,7 @@ func (a *App) CreateMCP(params schema.MCPCreate) error {
 	if err := params.Validate(); err != nil {
 		return err
 	}
-	params.UserID = a.deviceID
+	params.UserID = a.userID
 	_, err := a.mcpService.CreateMCPServer(a.ctx, params)
 	return err
 }

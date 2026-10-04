@@ -30,7 +30,7 @@ func (a *App) CreateSkill(params schema.SkillCreate) error {
 	if err := params.Validate(); err != nil {
 		return err
 	}
-	_, err := a.skillService.CreateSkill(a.ctx, params, a.deviceID)
+	_, err := a.skillService.CreateSkill(a.ctx, params, a.userID)
 	return err
 }
 
@@ -64,7 +64,7 @@ func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 stri
 	}
 	params.ContentType = "pdf"
 	params.Content = &extractedText
-	skill, err := a.skillService.CreateSkill(a.ctx, params, a.deviceID)
+	skill, err := a.skillService.CreateSkill(a.ctx, params, a.userID)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 stri
 }
 
 func (a *App) GetSkill() ([]schema.Skill, error) {
-	if err := a.skillService.SyncGlobalSkills(a.ctx, a.deviceID); err != nil {
+	if err := a.skillService.SyncGlobalSkills(a.ctx, a.userID); err != nil {
 		slog.ErrorContext(a.ctx, "Failed to sync global skills", "error", err)
 	}
 
@@ -174,5 +174,5 @@ func (a *App) GetSkillPDF(skillId uuid.UUID) (string, error) {
 
 func (a *App) DeleteSkill(id uuid.UUID) error {
 	slog.Info("Deleting skill", "id", id)
-	return a.skillService.DeleteSkill(a.ctx, a.deviceID, id)
+	return a.skillService.DeleteSkill(a.ctx, a.userID, id)
 }
