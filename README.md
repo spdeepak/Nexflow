@@ -5,13 +5,21 @@
 <h1 align="center">Nexflow</h1>
 
 <p align="center">
-  <strong>Multi-Agent Management Console</strong> — a desktop app to design, manage, and chat with hierarchies of AI agents.
+  <strong>A local-first desktop console to design, manage, and chat with hierarchies of AI agents.</strong>
 </p>
 
 <p align="center">
+  <a href="https://github.com/spdeepak/Nexflow/actions/workflows/go.yml"><img src="https://github.com/spdeepak/Nexflow/actions/workflows/go.yml/badge.svg" alt="Build status"></a>
+  <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go version">
+  <img src="https://img.shields.io/badge/Wails-v2-5c0000?logoColor=white" alt="Wails version">
+  <img src="https://img.shields.io/badge/Google%20ADK-v2-4285F4" alt="Google ADK version">
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> ·
   <a href="#features">Features</a> ·
-  <a href="#tech-stack">Tech Stack</a> ·
   <a href="#getting-started">Getting Started</a> ·
+  <a href="#commands">Commands</a> ·
   <a href="#project-structure">Project Structure</a>
 </p>
 
@@ -19,111 +27,136 @@
 
 ## Overview
 
-Nexflow is a Wails-based desktop application that lets you build **agent trees** — a root agent with ordered sub-agents
-that are delegated to autonomously at runtime via the Google **Agent Development Kit (ADK)**. Everything is managed from
-a local console UI:
+Nexflow lets you assemble an **agent tree** — a root agent with ordered sub-agents — and chat with it from a desktop
+UI. At run time the root agent is built with the [Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/)
+and delegates to sub-agents autonomously, following the instructions and descriptions you configured.
 
-- **Agents** — define root agents and sub-agents, set their mode (`chat`, `task`, `single_turn`), assign a model
-  credential, and reorder children.
-- **Models** — register model credentials (API keys + base URLs) for LLM providers (OpenAI, Anthropic, Google,
-  Ollama, …) at `app` (shared) or `user` scope, stored in the local database.
-- **Skills** — manage static skills (text or PDF) and attach them to agents for later use.
-- **MCP** — manage Model Context Protocol server configs (`streamable_http` or `stdio`), optionally restrict them to an
-  allow-list of tools, and link them to agents.
-- **Chat** — start a session against any agent tree and watch events stream to the UI in real time, with run and session
-  history persisted locally.
+Everything lives on your machine: a SQLite database, locally stored credentials, and a vanilla HTML/CSS/JS frontend
+talking to Go over [Wails](https://wails.io) bindings. No cloud account, no external service.
+
+```mermaid
+flowchart LR
+    UI["UI<br/>vanilla JS"] <-->|Wails bindings| App["application"]
+    App --> Runner["runner"]
+    Runner --> ADK["Google ADK"]
+    ADK --> Model[("LLM provider")]
+    ADK --> MCP[("MCP servers")]
+    Runner --> DB[("SQLite")]
+```
 
 ## Features
 
-- **Hierarchical agents** — persistent, position-ordered agent trees; sub-agents are reorderable from the UI, and the
-  saved order is preserved in the ADK sub-agent list built at run time.
-- **ADK-powered runs** — a run invokes a root agent and ADK autonomously delegates to sub-agents based on instructions
-  and descriptions; events, run status, and session state are persisted per invocation.
-- **User-scoped resources** — model credentials and skills can be app-scoped (shared) or user-scoped; sessions belong to
-  a user.
-- **Human-in-the-loop** — a run can pause on an ADK tool-confirmation request and be resumed with an approve/reject
-  decision.
-- **Local-first** — runs on a local SQLite database with no external services (an optional Ollama container is included
-  via `docker-compose`).
+- **Hierarchical agents** — build a root agent with ordered sub-agents, each with its own mode
+  (`chat` / `task` / `single_turn`), instructions, model, skills, and MCP servers. Reordering children in the UI
+  changes the order of the ADK `SubAgents` list at run time.
+- **ADK-powered runs** — a run streams events back to the UI in real time and persists events, run status, tool
+  calls, and session state per invocation.
+- **Model credentials** — register provider + model + base URL + API key at `app` (shared) or `user` scope.
+  Works with OpenAI, Anthropic, Google, Ollama, and any OpenAI-compatible endpoint.
+- **Skills** — attach text/Markdown/CSV/JSON/PDF documents or a folder containing a `SKILL.md` file to an agent.
+  Skills under `~/.agents/skills` are picked up automatically.
+- **MCP servers** — configure `streamable_http` or `stdio` MCP servers, restrict them to an `allowed_tools`
+  allow-list, and link them to agents. Bearer, API key, basic, and OAuth authentication are supported, with tokens
+  stored locally.
+- **Human-in-the-loop** — a run pauses on an ADK tool-confirmation request and resumes after you approve or reject
+  it. Interrupted runs stay interrupted, never converted to failures.
+- **Session & run history** — sessions, events, and runs are kept in SQLite and browsable from the UI.
 
-## Tech Stack
-
-| Layer      | Technology                                                                       |
-|------------|----------------------------------------------------------------------------------|
-| Desktop    | [Wails v2](https://wails.io) (Go + WebView2/WebKit)                              |
-| Inference  | [Google ADK v2](https://google.github.io/adk-docs/) (`google.golang.org/adk/v2`) |
-| Backend    | Go 1.26                                                                          |
-| Database   | SQLite (via `modernc.org/sqlite`), `golang-migrate` migrations                   |
-| Queries    | [sqlc](https://sqlc.dev) generated, type-safe query code                         |
-| Validation | `go-jsonschema` generated types from [`schema.json`](schema.json)                |
-| Frontend   | Vanilla HTML/CSS/JS (no framework), Wails bindings                               |
+> [!NOTE]
+> Nexflow is a single-user, local-first app: your identity is derived from the machine and stored in the local
+> database. Nothing is sent anywhere except the requests you configure to your own model and MCP providers.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Go 1.26+
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation) (`go tool wails`)
-- (Optional) Docker for the [Ollama](https://ollama.com) model server
+- [Go](https://go.dev/dl/) 1.26+
+- A desktop OS with WebView support (macOS packaging scripts are included)
+- (Optional) [Docker](https://www.docker.com) for the bundled Ollama service
 
-### Run in dev mode
+The Wails CLI, sqlc, mockery, and golangci-lint are pinned as Go tool dependencies — `go tool <name>` fetches them
+on first use, so there is nothing to install globally.
+
+### Run in development mode
 
 ```bash
 make wails-dev
 ```
 
-To talk to an agent:
+> [!WARNING]
+> `make wails-dev` deletes the local `app.db` and the generated Wails bindings before starting. Use it for a clean
+> dev reset — back up the database first if you care about the data in it.
 
-1. In the **Models** view, add a model credential for your LLM provider (provider, model name, base URL, and API key).
-2. In the **Agents** view, create an agent (or sub-agent) and assign it that model credential.
-3. In the **Chat** view, start a new chat against the agent.
+### Your first chat
 
-### Build a packaged macOS app
+1. **Models** — add a model credential: provider, model name, base URL, API key.
+2. **Agents** — create a root agent, assign the credential, and optionally add sub-agents.
+3. **Chat** — start a new session against that agent and send a message. Events stream into the UI as the run
+   progresses.
+
+### Run fully local with Ollama
+
+Start the bundled Ollama container and pull a model into it:
+
+```bash
+docker compose up -d ollama
+docker compose exec ollama ollama pull llama3.1
+```
+
+> [!TIP]
+> Already running Ollama on your machine? Skip Docker and run `ollama pull llama3.1` directly instead.
+
+Then add a model credential with provider `ollama` and base URL `http://localhost:11434/v1`.
+
+### Build a packaged app
 
 ```bash
 make wails-build   # produces cmd/app/build/bin/Nexflow.app
-make wails-run     # launch the binary directly (skips the Gatekeeper check)
+make wails-run     # launches the binary directly (skips the Gatekeeper check)
 ```
 
-### Useful commands
+The bundle is ad-hoc signed; `make wails-run` starts the executable inside the `.app` so you do not need an Apple
+Developer certificate.
 
-```bash
-make generate          # regenerate schema, sqlc, and mock code (after schema/migration/query changes)
-make lint-backend      # golangci-lint
-make test-backend      # lint + tests
-```
+## Commands
+
+| Command                      | What it does                                        |
+|------------------------------|-----------------------------------------------------|
+| `make wails-dev`             | Reset the dev database and run the app with hot reload |
+| `make wails-build`           | Build the packaged desktop app                       |
+| `make wails-run`             | Launch the built app binary directly                 |
+| `make generate`              | Regenerate sqlc queries and mockery mocks            |
+| `make lint-backend`          | Run golangci-lint                                    |
+| `make test-backend`          | Lint + run the Go test suite                         |
+| `make test-backend-coverage` | Run tests and print filtered coverage                |
+| `make mock-oauth`            | Start a local mock OAuth server for MCP testing      |
 
 ## Project Structure
 
-```
+```text
 .
 ├── cmd/
-│   └── app/                  # Wails desktop app
-│       ├── main.go           # Wails entrypoint
-│       └── frontend/         # Vanilla JS UI (agents, models, skills, mcp, chat views)
+│   ├── app/                  # Wails desktop entrypoint + frontend (agents, models, skills, mcp, chat views)
+│   └── mock_oauth/           # Local mock OAuth server for MCP development
 ├── internal/
-│   ├── application/          # App bindings exposed to the frontend
+│   ├── application/          # Wails bindings exposed to the frontend
 │   ├── runner/               # Chat orchestration over ADK (see runner/FLOW.md)
-│   ├── agents/               # Agent tree services
-│   ├── sessions/ events/     # Session store & event persistence
-│   ├── agentskills/ skills/  # Skill management
-│   ├── mcpserver/ agentmcp/  # MCP server configs & agent linking
+│   ├── agents/ agentskills/ agentmcp/   # Agent tree, skills, and MCP relationships
+│   ├── mcpserver/ mcpstore/  # MCP server configs, OAuth tokens
 │   ├── modelcredentials/     # LLM credential management
-│   └── ...                   # users, runs, sessionstate, artifacts
-├── migrations/               # SQL schema + custom ENUM types
-├── sqls/                     # SQL queries consumed by sqlc
-├── schema.json               # JSON schema used to generate Go request/response types
-├── configs/                  # app config & secrets
-└── Makefile                  # generate / lint / test / wails-dev / wails-build ...
+│   ├── sessions/ runs/ events/ toolcalls/ sessionstate/ artifacts/   # Run & event persistence
+│   ├── skills/ device/ users/ oauth/ config/ db/                     # Supporting services
+│   └── schema/ enums/ errors/ util/          # DTOs, validation, shared types
+├── pkg/                      # logging, time
+├── migrations/               # SQL schema (see migrations/README.md)
+├── sqls/                     # Queries consumed by sqlc
+├── configs/                  # App config and secrets
+└── Makefile                  # generate / lint / test / wails-* targets
 ```
 
-## Architecture Notes
+## Documentation
 
-- The **chat flow** (session creation → run → streaming events) is documented in [
-  `internal/runner/FLOW.md`](internal/runner/FLOW.md).
-- Design recommendations and deferred work are in [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md).
-- The **database schema** and custom enum types are documented in [`migrations/README.md`](migrations/README.md).
-
-## License
-
-Copyright © 2026 Nexflow.
+- [`internal/runner/FLOW.md`](internal/runner/FLOW.md) — the full chat flow, from the UI click to the persisted event.
+- [`migrations/README.md`](migrations/README.md) — database schema and enum types.
+- [`docs/RECOMMENDATIONS.md`](docs/RECOMMENDATIONS.md) — design decisions and deferred work.
+- [`AGENTS.md`](AGENTS.md) — engineering conventions for this repository.
