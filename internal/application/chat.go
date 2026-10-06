@@ -54,8 +54,7 @@ func (a *App) ListSessions() ([]schema.Session, error) {
 	}
 	sessionsList, err := a.chatService.ListSessions(a.ctx, userID)
 	if err != nil {
-		slog.ErrorContext(a.ctx, "Failed to list sessions", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list sessions: %w", err)
 	}
 	return sessionsList, nil
 }
@@ -134,8 +133,7 @@ func (a *App) ListEvents(sessionID string) ([]schema.Event, error) {
 	}
 	rows, err := a.chatService.ListEvents(a.ctx, parsed)
 	if err != nil {
-		slog.ErrorContext(a.ctx, "Failed to list events", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list events: %w", err)
 	}
 	return rows, nil
 }

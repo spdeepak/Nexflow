@@ -9,47 +9,29 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/spdeepak/nexflow/internal/agentmcp"
-	"github.com/spdeepak/nexflow/internal/agents"
-	"github.com/spdeepak/nexflow/internal/agentskills"
 	cfg "github.com/spdeepak/nexflow/internal/config"
 	"github.com/spdeepak/nexflow/internal/db"
 	"github.com/spdeepak/nexflow/internal/enums"
-	"github.com/spdeepak/nexflow/internal/modelcredentials"
 	"github.com/spdeepak/nexflow/internal/schema"
 	"github.com/spdeepak/nexflow/internal/users"
 )
 
 type testFixture struct {
-	test         *testing.T
-	mcpService   Service
-	userService  users.Service
-	agentService agents.Service
-	modelService modelcredentials.Service
+	test        *testing.T
+	mcpService  Service
+	userService users.Service
 }
 
 func newTestFixture(test *testing.T) *testFixture {
 	test.Helper()
 
-	dbConfig := cfg.AppConfig{
-		DBConfig: cfg.DBConfig{
-			Host:              "localhost",
-			Port:              "5432",
-			DBName:            "app.db",
-			UserName:          "admin",
-			Password:          "admin",
-			SSLMode:           "disable",
-			Timeout:           10 * time.Second,
-			MaxRetry:          3,
-			ConnectTimeout:    5 * time.Second,
-			StatementTimeout:  30 * time.Second,
-			MaxOpenConns:      1,
-			MaxIdleConns:      1,
-			ConnMaxLifetime:   1 * time.Hour,
-			ConnMaxIdleTime:   30 * time.Minute,
-			HealthCheckPeriod: 1 * time.Minute,
-		},
-	}.DBConfig
+	dbConfig := cfg.DBConfig{
+		DBName:          "app.db",
+		MaxOpenConns:    1,
+		MaxIdleConns:    1,
+		ConnMaxLifetime: time.Hour,
+		ConnMaxIdleTime: 30 * time.Minute,
+	}
 
 	require.NoError(test, db.RunMigrations(dbConfig))
 	test.Cleanup(func() {
@@ -61,11 +43,9 @@ func newTestFixture(test *testing.T) *testFixture {
 	conn := db.Connect(dbConfig)
 
 	return &testFixture{
-		test:         test,
-		mcpService:   NewService(New(conn)),
-		userService:  users.NewService(users.New(conn)),
-		agentService: agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn)), modelcredentials.NewService(modelcredentials.New(conn))),
-		modelService: modelcredentials.NewService(modelcredentials.New(conn)),
+		test:        test,
+		mcpService:  NewService(New(conn)),
+		userService: users.NewService(users.New(conn)),
 	}
 }
 

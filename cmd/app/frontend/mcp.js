@@ -149,163 +149,69 @@ async function connectOAuthMCP(mcpId) {
     }
 }
 
-function showAddMCPModal() {
-    const body = `
+// mcp is undefined for the create form and an mcpListData entry for edit.
+function mcpFormHTML(mcp) {
+    const m = mcp || {};
+    const attr = (v, placeholder) => mcp ? `value="${escapeHtml(v)}"` : `placeholder="${placeholder}"`;
+    const options = (pairs, current) => pairs
+        .map(([v, label]) => `<option value="${v}" ${(current || '') === v ? 'selected' : ''}>${label}</option>`)
+        .join('');
+    const checkbox = (id, label, checked) => `
+        <div class="form-group">
+            <label class="checkbox-label"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''}> ${label}</label>
+        </div>`;
+
+    return `
         <div class="form-group">
             <label for="mcp-name">Name *</label>
-            <input type="text" id="mcp-name" placeholder="MCP server name" required>
+            <input type="text" id="mcp-name" ${attr(m.name, 'MCP server name')} required>
         </div>
         <div class="form-group">
             <label for="mcp-transport">Transport *</label>
-            <select id="mcp-transport">
-                <option value="streamable_http">streamable_http</option>
-                <option value="stdio">stdio</option>
-            </select>
+            <select id="mcp-transport">${options([['streamable_http', 'streamable_http'], ['stdio', 'stdio']], m.transport)}</select>
         </div>
         <div class="form-group">
             <label for="mcp-endpoint">Endpoint *</label>
-            <input type="text" id="mcp-endpoint" placeholder="e.g. http://localhost:3000/mcp">
+            <input type="text" id="mcp-endpoint" ${attr(m.endpoint, 'e.g. http://localhost:3000/mcp')}>
         </div>
         <div class="form-group">
             <label for="mcp-command">Command</label>
-            <input type="text" id="mcp-command" placeholder="e.g. npx">
+            <input type="text" id="mcp-command" ${attr(m.command || '', 'e.g. npx')}>
         </div>
         <div class="form-group">
             <label for="mcp-args">Arguments (comma separated)</label>
-            <input type="text" id="mcp-args" placeholder="e.g. arg1, arg2">
+            <input type="text" id="mcp-args" ${attr((m.args || []).join(', '), 'e.g. arg1, arg2')}>
         </div>
         <div class="form-group">
             <label for="mcp-auth-type">Auth Type</label>
-            <select id="mcp-auth-type" onchange="toggleAuthConfig()">
-                <option value="">none</option>
-                <option value="api_key">api_key</option>
-                <option value="bearer">bearer</option>
-                <option value="oauth">oauth</option>
-            </select>
+            <select id="mcp-auth-type" onchange="toggleAuthConfig()">${options(
+                [['', 'none'], ['api_key', 'api_key'], ['bearer', 'bearer'], ['oauth', 'oauth']], m.authType)}</select>
         </div>
         <div id="auth-config-group"></div>
         <div class="form-group">
             <label for="mcp-allowed-tools">Allowed Tools (comma separated)</label>
-            <input type="text" id="mcp-allowed-tools" placeholder="e.g. tool1, tool2">
+            <input type="text" id="mcp-allowed-tools" ${attr((m.allowedTools || []).join(', '), 'e.g. tool1, tool2')}>
         </div>
-        <div class="form-group">
-            <label class="checkbox-label"><input type="checkbox" id="mcp-require-confirm"> Require Confirmation</label>
-        </div>
-        <div class="form-group">
-            <label class="checkbox-label"><input type="checkbox" id="mcp-active" checked> Active</label>
-        </div>`;
-
-    showModal('Add MCP Server', body, submitAddMCP, 'Add');
-    renderAuthConfigInputs({});
+        ${checkbox('mcp-require-confirm', 'Require Confirmation', m.requireConfirmation)}
+        ${checkbox('mcp-active', 'Active', mcp ? m.isActive : true)}`;
 }
 
-async function submitAddMCP() {
-    const name = document.getElementById('mcp-name').value.trim();
-    const transport = document.getElementById('mcp-transport').value;
-    const endpoint = document.getElementById('mcp-endpoint').value.trim();
-    const commandStr = document.getElementById('mcp-command').value.trim();
-    const argsStr = document.getElementById('mcp-args').value.trim();
-    const authTypeStr = document.getElementById('mcp-auth-type').value;
-    const allowedToolsStr = document.getElementById('mcp-allowed-tools').value.trim();
-    const requireConfirm = document.getElementById('mcp-require-confirm').checked;
-    const isActive = document.getElementById('mcp-active').checked;
-
-    if (!name || !endpoint) {
-        showToast('Name and Endpoint are required');
-        return;
-    }
-
-    const authConfig = buildAuthConfig();
-    if (authTypeStr && !authConfig) {
-        showToast('Auth Config is required for the selected Auth Type');
-        return;
-    }
-
-    const params = {
-        name: name,
-        transport: transport,
-        endpoint: endpoint,
-        command: commandStr || '',
-        args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
-        authType: authTypeStr || null,
-        authConfig: authConfig,
-        allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
-        requireConfirmation: requireConfirm,
-        isActive: isActive,
-    };
-
-    try {
-        await window.go.application.App.CreateMCP(params);
-        hideModal();
-        renderView();
-    } catch (err) {
-        showToast('Failed to add MCP: ' + err);
-    }
+function showAddMCPModal() {
+    showModal('Add MCP Server', mcpFormHTML(), submitMCPForm, 'Add');
+    renderAuthConfigInputs({});
 }
 
 function showEditMCPModal(mcpId) {
     const mcp = mcpListData.find(m => m.id === mcpId);
     if (!mcp) return;
-
-    const body = `
-        <div class="form-group">
-            <label for="mcp-name">Name *</label>
-            <input type="text" id="mcp-name" value="${escapeHtml(mcp.name)}" required>
-        </div>
-        <div class="form-group">
-            <label for="mcp-transport">Transport *</label>
-            <select id="mcp-transport">
-                <option value="streamable_http" ${mcp.transport === 'streamable_http' ? 'selected' : ''}>streamable_http</option>
-                <option value="stdio" ${mcp.transport === 'stdio' ? 'selected' : ''}>stdio</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="mcp-endpoint">Endpoint *</label>
-            <input type="text" id="mcp-endpoint" value="${escapeHtml(mcp.endpoint)}">
-        </div>
-        <div class="form-group">
-            <label for="mcp-command">Command</label>
-            <input type="text" id="mcp-command" value="${escapeHtml(mcp.command || '')}">
-        </div>
-        <div class="form-group">
-            <label for="mcp-args">Arguments (comma separated)</label>
-            <input type="text" id="mcp-args" value="${escapeHtml((mcp.args || []).join(', '))}">
-        </div>
-        <div class="form-group">
-            <label for="mcp-auth-type">Auth Type</label>
-            <select id="mcp-auth-type" onchange="toggleAuthConfig()">
-                <option value="" ${(mcp.authType || '') === '' ? 'selected' : ''}>none</option>
-                <option value="api_key" ${mcp.authType === 'api_key' ? 'selected' : ''}>api_key</option>
-                <option value="bearer" ${mcp.authType === 'bearer' ? 'selected' : ''}>bearer</option>
-                <option value="oauth" ${mcp.authType === 'oauth' ? 'selected' : ''}>oauth</option>
-                </select>
-        </div>
-        <div id="auth-config-group"></div>
-        <div class="form-group">
-            <label for="mcp-allowed-tools">Allowed Tools (comma separated)</label>
-            <input type="text" id="mcp-allowed-tools" value="${escapeHtml((mcp.allowedTools || []).join(', '))}">
-        </div>
-        <div class="form-group">
-            <label class="checkbox-label"><input type="checkbox" id="mcp-require-confirm" ${mcp.requireConfirmation ? 'checked' : ''}> Require Confirmation</label>
-        </div>
-        <div class="form-group">
-            <label class="checkbox-label"><input type="checkbox" id="mcp-active" ${mcp.isActive ? 'checked' : ''}> Active</label>
-        </div>`;
-
-    showModal('Edit MCP Server', body, () => submitEditMCP(mcpId), 'Update');
+    showModal('Edit MCP Server', mcpFormHTML(mcp), () => submitMCPForm(mcpId), 'Update');
     renderAuthConfigInputs(mcp.authConfig || {});
 }
 
-async function submitEditMCP(mcpId) {
+async function submitMCPForm(mcpId) {
     const name = document.getElementById('mcp-name').value.trim();
-    const transport = document.getElementById('mcp-transport').value;
     const endpoint = document.getElementById('mcp-endpoint').value.trim();
-    const commandStr = document.getElementById('mcp-command').value.trim();
-    const argsStr = document.getElementById('mcp-args').value.trim();
     const authTypeStr = document.getElementById('mcp-auth-type').value;
-    const allowedToolsStr = document.getElementById('mcp-allowed-tools').value.trim();
-    const requireConfirm = document.getElementById('mcp-require-confirm').checked;
-    const isActive = document.getElementById('mcp-active').checked;
 
     if (!name || !endpoint) {
         showToast('Name and Endpoint are required');
@@ -318,25 +224,30 @@ async function submitEditMCP(mcpId) {
         return;
     }
 
+    const csv = (s) => s ? s.split(',').map(v => v.trim()).filter(Boolean) : [];
     const params = {
-        name: name,
-        transport: transport,
-        endpoint: endpoint,
-        command: commandStr || '',
-        args: argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
+        name,
+        transport: document.getElementById('mcp-transport').value,
+        endpoint,
+        command: document.getElementById('mcp-command').value.trim() || '',
+        args: csv(document.getElementById('mcp-args').value.trim()),
         authType: authTypeStr || null,
-        authConfig: authConfig,
-        allowedTools: allowedToolsStr ? allowedToolsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
-        requireConfirmation: requireConfirm,
-        isActive: isActive,
+        authConfig,
+        allowedTools: csv(document.getElementById('mcp-allowed-tools').value.trim()),
+        requireConfirmation: document.getElementById('mcp-require-confirm').checked,
+        isActive: document.getElementById('mcp-active').checked,
     };
 
     try {
-        await window.go.application.App.UpdateMCP(mcpId, params);
+        if (mcpId) {
+            await window.go.application.App.UpdateMCP(mcpId, params);
+        } else {
+            await window.go.application.App.CreateMCP(params);
+        }
         hideModal();
         renderView();
     } catch (err) {
-        showToast('Failed to update MCP: ' + err);
+        showToast(`Failed to ${mcpId ? 'update' : 'add'} MCP: ` + err);
     }
 }
 

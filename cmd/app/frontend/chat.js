@@ -525,7 +525,6 @@ function onChatInterrupt(interrupt) {
 async function resumeChat(confirmed, btn) {
     if (!btn) return;
     const callID = window.__pendingConfirmationCallId;
-    const runID = window.__pendingConfirmationRunId;
     if (!callID) return;
 
     btn.disabled = true;
@@ -544,7 +543,6 @@ async function resumeChat(confirmed, btn) {
     }
 
     window.__pendingConfirmationCallId = '';
-    window.__pendingConfirmationRunId = '';
     removePendingConfirmationCard();
 
     if (chatRunning) setChatRunning(false);
@@ -559,7 +557,6 @@ function removePendingConfirmationCard() {
 
 function setPendingConfirmation(interrupt) {
     window.__pendingConfirmationCallId = interrupt.callId;
-    window.__pendingConfirmationRunId = interrupt.runId || '';
 }
 
 // --- Node detail panel ---
@@ -607,9 +604,6 @@ class EventDetail {
 function unbindChatEvents() {
     try {
         window.runtime.EventsOff(CHAT_EVENT);
-    } catch (e) {
-    }
-    try {
         window.runtime.EventsOff(CHAT_INTERRUPT_EVENT);
     } catch (e) {
     }

@@ -157,7 +157,74 @@ async function deleteAgent(agentId) {
     }
 }
 
-let editModelOptions = [];
+function modeSelectHTML(id, mode) {
+    return `
+        <div class="form-group">
+            <label for="${id}">Mode</label>
+            <select id="${id}" required>
+                ${['chat', 'task', 'single_turn'].map(v => `<option value="${v}" ${mode === v ? 'selected' : ''}>${v}</option>`).join('')}
+            </select>
+        </div>`;
+}
+
+function modelSelectHTML(id, options, selected, required) {
+    return `
+        <div class="form-group">
+            <label for="${id}">Model${required ? ' *' : ''}</label>
+            <select id="${id}"${required ? ' required' : ''}>
+                <option value="">-- Select Model --</option>
+                ${options.map(m => `<option value="${m.value}" ${m.value === selected ? 'selected' : ''}>${escapeHtml(m.label)}</option>`).join('')}
+            </select>
+        </div>`;
+}
+
+// modelConfig is undefined when creating a fresh agent.
+function modelConfigAccordionHTML(modelConfig) {
+    const cfg = modelConfig || {};
+    const number = (id, label, attrs, value) => `
+                <div class="form-group">
+                    <label for="${id}">${label}</label>
+                    <input type="number" id="${id}" ${attrs} value="${value ?? ''}">
+                </div>`;
+
+    return `
+        <div class="accordion">
+            <button type="button" class="accordion-toggle" onclick="toggleAccordion(this)">
+                Model Configuration (Advanced) <span class="chevron">&#9654;</span>
+            </button>
+            <div class="accordion-content">
+                ${number('mc-temperature', 'Temperature (0.0 - 2.0)', 'step="0.1" min="0" max="2" placeholder="e.g. 0.7"', cfg.temperature)}
+                ${number('mc-topP', 'Top P', 'step="0.05" min="0" max="1" placeholder="e.g. 0.95"', cfg.top_p)}
+                ${number('mc-topK', 'Top K', 'min="1" placeholder="e.g. 40"', cfg.top_k)}
+                ${number('mc-maxTokens', 'Max Output Tokens', 'min="1" placeholder="e.g. 1024"', cfg.max_output_tokens)}
+                ${number('mc-frequencyPenalty', 'Frequency Penalty', 'step="0.1" placeholder="e.g. 0.0"', cfg.frequency_penalty)}
+                ${number('mc-presencePenalty', 'Presence Penalty', 'step="0.1" placeholder="e.g. 0.0"', cfg.presence_penalty)}
+                ${number('mc-seed', 'Seed', 'min="0" placeholder="e.g. 42"', cfg.seed)}
+                <div class="form-group">
+                    <label for="mc-stopSequences">Stop Sequences (comma separated)</label>
+                    <input type="text" id="mc-stopSequences" placeholder="e.g. END, STOP" value="${(cfg.stop_sequences || []).join(', ')}">
+                </div>
+                <div class="form-group">
+                    <label for="mc-responseMimeType">Response MIME Type</label>
+                    <select id="mc-responseMimeType">
+                        <option value="">-- Default --</option>
+                        <option value="application/json" ${cfg.response_mime_type === 'application/json' ? 'selected' : ''}>application/json</option>
+                        <option value="text/plain" ${cfg.response_mime_type === 'text/plain' ? 'selected' : ''}>text/plain</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="mc-responseLogprobs">
+                        <input type="checkbox" id="mc-responseLogprobs" style="width:auto;margin-right:6px;" ${cfg.response_logprobs ? 'checked' : ''}> Return Log Probs
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="mc-audioTimestamp">
+                        <input type="checkbox" id="mc-audioTimestamp" style="width:auto;margin-right:6px;" ${cfg.audio_timestamp ? 'checked' : ''}> Audio Timestamp
+                    </label>
+                </div>
+            </div>
+        </div>`;
+}
 
 async function showEditAgentModal(agentId) {
     let detail;
@@ -168,7 +235,7 @@ async function showEditAgentModal(agentId) {
         return;
     }
 
-    editModelOptions = await window.go.application.App.GetModelOptions();
+    modelOptions = await window.go.application.App.GetModelOptions();
     const modelCredentialId = detail.modelCredentialId || '';
 
     const body = `
@@ -188,21 +255,8 @@ async function showEditAgentModal(agentId) {
             <label for="edit-agent-ginstr">Global Instructions</label>
             <textarea id="edit-agent-ginstr">${escapeHtml(detail.globalInstruction || '')}</textarea>
         </div>
-        <div class="form-group">
-            <label for="edit-agent-mode">Mode</label>
-            <select id="edit-agent-mode">
-                <option value="chat" ${detail.mode === 'chat' ? 'selected' : ''}>chat</option>
-                <option value="task" ${detail.mode === 'task' ? 'selected' : ''}>task</option>
-                <option value="single_turn" ${detail.mode === 'single_turn' ? 'selected' : ''}>single_turn</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="edit-agent-model">Model</label>
-            <select id="edit-agent-model">
-                <option value="">-- Select Model --</option>
-                ${editModelOptions.map(m => `<option value="${m.value}" ${m.value === modelCredentialId ? 'selected' : ''}>${escapeHtml(m.label)}</option>`).join('')}
-            </select>
-        </div>
+        ${modeSelectHTML('edit-agent-mode', detail.mode)}
+        ${modelSelectHTML('edit-agent-model', modelOptions, modelCredentialId, false)}
         <div class="form-group">
             <label>Credential Source</label>
             <input type="text" value="${escapeHtml(detail.credentialSource)}" disabled>
@@ -210,63 +264,7 @@ async function showEditAgentModal(agentId) {
         <div class="form-group">
             <label class="checkbox-label"><input type="checkbox" id="edit-agent-active" ${detail.isActive ? 'checked' : ''}> Active</label>
         </div>
-        <div class="accordion">
-            <button type="button" class="accordion-toggle" onclick="toggleAccordion(this)">
-                Model Configuration (Advanced) <span class="chevron">&#9654;</span>
-            </button>
-            <div class="accordion-content">
-                <div class="form-group">
-                    <label for="mc-temperature">Temperature (0.0 - 2.0)</label>
-                    <input type="number" id="mc-temperature" step="0.1" min="0" max="2" placeholder="e.g. 0.7" value="${detail.modelConfig?.temperature ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-topP">Top P</label>
-                    <input type="number" id="mc-topP" step="0.05" min="0" max="1" placeholder="e.g. 0.95" value="${detail.modelConfig?.top_p ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-topK">Top K</label>
-                    <input type="number" id="mc-topK" min="1" placeholder="e.g. 40" value="${detail.modelConfig?.top_k ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-maxTokens">Max Output Tokens</label>
-                    <input type="number" id="mc-maxTokens" min="1" placeholder="e.g. 1024" value="${detail.modelConfig?.max_output_tokens ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-frequencyPenalty">Frequency Penalty</label>
-                    <input type="number" id="mc-frequencyPenalty" step="0.1" placeholder="e.g. 0.0" value="${detail.modelConfig?.frequency_penalty ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-presencePenalty">Presence Penalty</label>
-                    <input type="number" id="mc-presencePenalty" step="0.1" placeholder="e.g. 0.0" value="${detail.modelConfig?.presence_penalty ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-seed">Seed</label>
-                    <input type="number" id="mc-seed" min="0" placeholder="e.g. 42" value="${detail.modelConfig?.seed ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-stopSequences">Stop Sequences (comma separated)</label>
-                    <input type="text" id="mc-stopSequences" placeholder="e.g. END, STOP" value="${(detail.modelConfig?.stop_sequences || []).join(', ')}">
-                </div>
-                <div class="form-group">
-                    <label for="mc-responseMimeType">Response MIME Type</label>
-                    <select id="mc-responseMimeType">
-                        <option value="">-- Default --</option>
-                        <option value="application/json" ${detail.modelConfig?.response_mime_type === 'application/json' ? 'selected' : ''}>application/json</option>
-                        <option value="text/plain" ${detail.modelConfig?.response_mime_type === 'text/plain' ? 'selected' : ''}>text/plain</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="mc-responseLogprobs">
-                        <input type="checkbox" id="mc-responseLogprobs" style="width:auto;margin-right:6px;" ${detail.modelConfig?.response_logprobs ? 'checked' : ''}> Return Log Probs
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label for="mc-audioTimestamp">
-                        <input type="checkbox" id="mc-audioTimestamp" style="width:auto;margin-right:6px;" ${detail.modelConfig?.audio_timestamp ? 'checked' : ''}> Audio Timestamp
-                    </label>
-                </div>
-            </div>
-        </div>`;
+        ${modelConfigAccordionHTML(detail.modelConfig)}`;
 
     showModal('Edit Agent', body, () => submitEditAgent(agentId), 'Update');
 }
@@ -274,7 +272,7 @@ async function showEditAgentModal(agentId) {
 async function submitEditAgent(agentId) {
     const modelSelect = document.getElementById('edit-agent-model');
     const modelCredentialId = modelSelect.value;
-    const selectedModel = editModelOptions.find(m => m.value === modelCredentialId);
+    const selectedModel = modelOptions.find(m => m.value === modelCredentialId);
     const modelMatch = selectedModel?.label.match(/\(([^/]+)\/([^)]+)\)/);
 
     const params = {
@@ -298,10 +296,8 @@ async function submitEditAgent(agentId) {
     }
 }
 
-let subAgentModelOptions = [];
-
 async function showCreateSubAgentModal(parentId, parentName) {
-    subAgentModelOptions = await window.go.application.App.GetModelOptions();
+    modelOptions = await window.go.application.App.GetModelOptions();
 
     const body = `
         <div class="form-group">
@@ -324,21 +320,8 @@ async function showCreateSubAgentModal(parentId, parentName) {
             <label for="sub-agent-ginstr">Global Instructions</label>
             <textarea id="sub-agent-ginstr" placeholder="Global instructions"></textarea>
         </div>
-        <div class="form-group">
-            <label for="sub-agent-mode">Mode</label>
-            <select id="sub-agent-mode" required>
-                <option value="chat">chat</option>
-                <option value="task">task</option>
-                <option value="single_turn">single_turn</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="sub-agent-model">Model *</label>
-            <select id="sub-agent-model" required>
-                <option value="">-- Select Model --</option>
-                ${subAgentModelOptions.map(m => `<option value="${m.value}">${escapeHtml(m.label)}</option>`).join('')}
-            </select>
-        </div>`;
+        ${modeSelectHTML('sub-agent-mode')}
+        ${modelSelectHTML('sub-agent-model', modelOptions, '', true)}`;
 
     showModal('Create Sub Agent', body, () => submitCreateSubAgent(parentId), 'Create Sub-Agent');
 }
@@ -352,7 +335,7 @@ async function submitCreateSubAgent(parentId) {
         return;
     }
 
-    const selectedModel = subAgentModelOptions.find(m => m.value === modelCredentialId);
+    const selectedModel = modelOptions.find(m => m.value === modelCredentialId);
     const modelMatch = selectedModel?.label.match(/\(([^/]+)\/([^)]+)\)/);
 
     const params = {
@@ -401,78 +384,9 @@ async function showCreateAgentModal() {
             <label for="agent-ginstr">Global Instructions</label>
             <textarea id="agent-ginstr" placeholder="Global instructions of this agent. Will be used in all of it's sub-agents"></textarea>
         </div>
-        <div class="form-group">
-            <label for="agent-mode">Mode</label>
-            <select id="agent-mode" required>
-                <option value="chat">chat</option>
-                <option value="task">task</option>
-                <option value="single_turn">single_turn</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="agent-model">Model *</label>
-            <select id="agent-model" required>
-                <option value="">-- Select Model --</option>
-                ${modelOptions.map(m => `<option value="${m.value}">${escapeHtml(m.label)}</option>`).join('')}
-            </select>
-        </div>
-        <div class="accordion">
-            <button type="button" class="accordion-toggle" onclick="toggleAccordion(this)">
-                Model Configuration (Advanced) <span class="chevron">&#9654;</span>
-            </button>
-            <div class="accordion-content">
-                <div class="form-group">
-                    <label for="mc-temperature">Temperature (0.0 - 2.0)</label>
-                    <input type="number" id="mc-temperature" step="0.1" min="0" max="2" placeholder="e.g. 0.7">
-                </div>
-                <div class="form-group">
-                    <label for="mc-topP">Top P</label>
-                    <input type="number" id="mc-topP" step="0.05" min="0" max="1" placeholder="e.g. 0.95">
-                </div>
-                <div class="form-group">
-                    <label for="mc-topK">Top K</label>
-                    <input type="number" id="mc-topK" min="1" placeholder="e.g. 40">
-                </div>
-                <div class="form-group">
-                    <label for="mc-maxTokens">Max Output Tokens</label>
-                    <input type="number" id="mc-maxTokens" min="1" placeholder="e.g. 1024">
-                </div>
-                <div class="form-group">
-                    <label for="mc-frequencyPenalty">Frequency Penalty</label>
-                    <input type="number" id="mc-frequencyPenalty" step="0.1" placeholder="e.g. 0.0">
-                </div>
-                <div class="form-group">
-                    <label for="mc-presencePenalty">Presence Penalty</label>
-                    <input type="number" id="mc-presencePenalty" step="0.1" placeholder="e.g. 0.0">
-                </div>
-                <div class="form-group">
-                    <label for="mc-seed">Seed</label>
-                    <input type="number" id="mc-seed" min="0" placeholder="e.g. 42">
-                </div>
-                <div class="form-group">
-                    <label for="mc-stopSequences">Stop Sequences (comma separated)</label>
-                    <input type="text" id="mc-stopSequences" placeholder="e.g. END, STOP">
-                </div>
-                <div class="form-group">
-                    <label for="mc-responseMimeType">Response MIME Type</label>
-                    <select id="mc-responseMimeType">
-                        <option value="">-- Default --</option>
-                        <option value="application/json">application/json</option>
-                        <option value="text/plain">text/plain</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="mc-responseLogprobs">
-                        <input type="checkbox" id="mc-responseLogprobs" style="width:auto;margin-right:6px;"> Return Log Probs
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label for="mc-audioTimestamp">
-                        <input type="checkbox" id="mc-audioTimestamp" style="width:auto;margin-right:6px;"> Audio Timestamp
-                    </label>
-                </div>
-            </div>
-        </div>`;
+        ${modeSelectHTML('agent-mode')}
+        ${modelSelectHTML('agent-model', modelOptions, '', true)}
+        ${modelConfigAccordionHTML()}`;
 
     showModal('Create Agent', body, submitCreateAgent, 'Create Agent');
 }

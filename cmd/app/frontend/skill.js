@@ -222,13 +222,7 @@ async function submitCreateSkill() {
                 return;
             }
 
-            const arrayBuffer = await file.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            const fileDataBase64 = btoa(binary);
+            const fileDataBase64 = await fileToBase64(file);
 
             await window.go.application.App.CreateSkillFromFile(params, fileDataBase64);
         } else {
@@ -292,13 +286,7 @@ async function submitUpdateSkill(skillId, contentType) {
             const file = fileInput.files[0];
 
             if (file) {
-                const arrayBuffer = await file.arrayBuffer();
-                const bytes = new Uint8Array(arrayBuffer);
-                let binary = '';
-                for (let i = 0; i < bytes.byteLength; i++) {
-                    binary += String.fromCharCode(bytes[i]);
-                }
-                const fileDataBase64 = btoa(binary);
+                const fileDataBase64 = await fileToBase64(file);
 
                 await window.go.application.App.UpdateSkillFromFile(skillId, params, fileDataBase64);
             } else {
@@ -314,6 +302,13 @@ async function submitUpdateSkill(skillId, contentType) {
     } catch (err) {
         showToast('Failed to update skill: ' + err);
     }
+}
+
+async function fileToBase64(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (const b of bytes) binary += String.fromCharCode(b);
+    return btoa(binary);
 }
 
 function confirmDeleteSkill(skillId, skillTitle) {

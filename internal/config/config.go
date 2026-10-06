@@ -1,8 +1,6 @@
 package config
 
 import (
-	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -178,7 +176,7 @@ func NewConfiguration() *AppConfig {
 	config.Model = secrets.Model
 	config.absolutizeDBName()
 
-	if err := validateConfig(config); err != nil {
+	if err := validator.New().Struct(config); err != nil {
 		slog.Error("invalid config", "error", err)
 		os.Exit(1)
 	}
@@ -203,18 +201,4 @@ func populateDBCredentials(secret *secret, config *AppConfig) {
 		slog.Error("DB_PASSWORD not found")
 		os.Exit(1)
 	}
-}
-
-func validateConfig(cfg *AppConfig) error {
-	validate := validator.New()
-	if err := validate.Struct(cfg); err != nil {
-		var validationErrors validator.ValidationErrors
-		errors.As(err, &validationErrors)
-		var errorMessages []string
-		for _, e := range validationErrors {
-			errorMessages = append(errorMessages, fmt.Sprintf("%s: %s", e.Field(), e.Tag()))
-		}
-		return fmt.Errorf("validation failed: %s", strings.Join(errorMessages, "; "))
-	}
-	return nil
 }

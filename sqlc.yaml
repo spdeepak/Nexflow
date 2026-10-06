@@ -7,8 +7,6 @@ overrides:
       # users
       - column: "users.id"
         go_type: "github.com/google/uuid.UUID"
-      - column: "users.created_at"
-        go_type: "time.Time"
 
       # model_credentials
       - column: "model_credentials.id"
@@ -17,10 +15,6 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "model_credentials.scope"
         go_type: "github.com/spdeepak/nexflow/internal/enums.CredentialScope"
-      - column: "model_credentials.created_at"
-        go_type: "time.Time"
-      - column: "model_credentials.updated_at"
-        go_type: "time.Time"
       - column: "model_credentials.is_active"
         go_type: "bool"
 
@@ -35,10 +29,6 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "agents.credential_source"
         go_type: "github.com/spdeepak/nexflow/internal/enums.CredentialSource"
-      - column: "agents.created_at"
-        go_type: "time.Time"
-      - column: "agents.updated_at"
-        go_type: "time.Time"
 
       # sessions
       - column: "sessions.id"
@@ -47,10 +37,6 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "sessions.root_agent_id"
         go_type: "github.com/google/uuid.UUID"
-      - column: "sessions.last_update"
-        go_type: "time.Time"
-      - column: "sessions.created_at"
-        go_type: "time.Time"
 
       # events
       - column: "events.id"
@@ -61,22 +47,16 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "events.role"
         go_type: "github.com/spdeepak/nexflow/internal/enums.EventRole"
-      - column: "events.created_at"
-        go_type: "time.Time"
 
       # session_state
       - column: "session_state.session_id"
         go_type: "github.com/google/uuid.UUID"
-      - column: "session_state.updated_at"
-        go_type: "time.Time"
 
       # artifacts
       - column: "artifacts.id"
         go_type: "github.com/google/uuid.UUID"
       - column: "artifacts.session_id"
         go_type: "github.com/google/uuid.UUID"
-      - column: "artifacts.created_at"
-        go_type: "time.Time"
 
       # runs
       - column: "runs.id"
@@ -89,8 +69,6 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "runs.status"
         go_type: "github.com/spdeepak/nexflow/internal/enums.RunStatus"
-      - column: "runs.started_at"
-        go_type: "time.Time"
       - column: "runs.finished_at"
         go_type:
           import: "database/sql"
@@ -105,8 +83,6 @@ overrides:
         go_type: "github.com/google/uuid.UUID"
       - column: "tool_calls.status"
         go_type: "github.com/spdeepak/nexflow/internal/enums.ToolCallStatus"
-      - column: "tool_calls.created_at"
-        go_type: "time.Time"
 
       # skills
       - column: "skills.id"
@@ -117,18 +93,12 @@ overrides:
         go_type: "github.com/spdeepak/nexflow/internal/enums.SkillScope"
       - column: "skills.content_type"
         go_type: "github.com/spdeepak/nexflow/internal/enums.SkillContentType"
-      - column: "skills.created_at"
-        go_type: "time.Time"
-      - column: "skills.updated_at"
-        go_type: "time.Time"
 
       # agent_skills
       - column: "agent_skills.agent_id"
         go_type: "github.com/google/uuid.UUID"
       - column: "agent_skills.skill_id"
         go_type: "github.com/google/uuid.UUID"
-      - column: "agent_skills.created_at"
-        go_type: "time.Time"
 
       # mcp_server
       - column: "mcp_server.id"
@@ -139,10 +109,6 @@ overrides:
         go_type: "github.com/spdeepak/nexflow/internal/enums.McpTransport"
       - column: "mcp_server.auth_type"
         go_type: "github.com/spdeepak/nexflow/internal/enums.McpAuthType"
-      - column: "mcp_server.created_at"
-        go_type: "time.Time"
-      - column: "mcp_server.updated_at"
-        go_type: "time.Time"
       - column: "mcp_server.command"
         go_type: "string"
       - column: "mcp_server.args"
@@ -171,10 +137,6 @@ overrides:
         go_type: "string"
       - column: "mcp_oauth_client_config.auth_style"
         go_type: "golang.org/x/oauth2.AuthStyle"
-      - column: "mcp_oauth_client_config.created_at"
-        go_type: "time.Time"
-      - column: "mcp_oauth_client_config.updated_at"
-        go_type: "time.Time"
 
       # mcp_oauth_grant
       - column: "mcp_oauth_grant.user_id"
@@ -189,10 +151,6 @@ overrides:
         go_type:
           import: "database/sql"
           type: "NullTime"
-      - column: "mcp_oauth_grant.created_at"
-        go_type: "time.Time"
-      - column: "mcp_oauth_grant.updated_at"
-        go_type: "time.Time"
 
 
 sql:

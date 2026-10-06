@@ -28,8 +28,7 @@ func (a *App) CreateSubAgent(params schema.AgentCreate) error {
 func (a *App) GetRootAgents() ([]schema.Agent, error) {
 	rootAgentsList, err := a.agentService.ListRootAgents(a.ctx)
 	if err != nil {
-		slog.ErrorContext(a.ctx, "Error getting agent list", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list root agents: %w", err)
 	}
 	return rootAgentsList, nil
 }
@@ -59,8 +58,7 @@ func (a *App) UpdateAgent(id string, params schema.AgentUpdate) error {
 func (a *App) GetSubAgents(parentId string) ([]schema.Agent, error) {
 	children, err := a.agentService.GetSubAgents(a.ctx, uuid.MustParse(parentId))
 	if err != nil {
-		slog.ErrorContext(a.ctx, "Error getting sub-agents", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to list sub-agents: %w", err)
 	}
 	return children, nil
 }

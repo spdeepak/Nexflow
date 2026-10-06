@@ -271,41 +271,12 @@ func (r *runner) buildSubAgent(ctx context.Context, subAgent schema.Agent) (adka
 	if err != nil {
 		return nil, fmt.Errorf("failed to get detail for sub-agent %s: %w", subAgent.Name, err)
 	}
-
-	agentModel, err := r.resolveModel(ctx, apiAgent)
-	if err != nil {
-		return nil, err
-	}
-
-	skills, err := r.resolveSkills(ctx, apiAgent)
-	if err != nil {
-		return nil, err
-	}
-
-	mcpToolsets := r.resolveMCPs(ctx, apiAgent)
-	toolsets := make([]tool.Toolset, 0, 1+len(mcpToolsets))
-	toolsets = append(toolsets, skills)
-	toolsets = append(toolsets, mcpToolsets...)
-
-	cfg := llmagent.Config{
-		Name:                  apiAgent.Name,
-		Description:           apiAgent.Description,
-		Instruction:           apiAgent.Instruction,
-		Model:                 agentModel,
-		Mode:                  apiAgent.Mode,
-		GlobalInstruction:     apiAgent.GlobalInstruction,
-		GenerateContentConfig: &apiAgent.ModelConfig,
-		Toolsets:              toolsets,
-	}
-
-	agent, err := llmagent.New(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build llm agent %s: %w", apiAgent.Name, err)
-	}
-	return agent, nil
+	return r.buildRootAgentWithSubAgents(ctx, apiAgent, nil)
 }
 
-// buildRootAgentWithSubAgents is like buildSubAgent but wires the given sub-agents into the root agent's config so ADK can delegate to them.
+// buildRootAgentWithSubAgents constructs an ADK llmagent for the given agent,
+// resolving its model, skills and MCP toolsets, and wires adkSubAgents into the
+// config so ADK can delegate to them. Pass nil to build a leaf agent.
 func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent schema.AgentDetail, adkSubAgents []adkagent.Agent) (adkagent.Agent, error) {
 	agentModel, err := r.resolveModel(ctx, rootAgent)
 	if err != nil {
@@ -336,8 +307,8 @@ func (r *runner) buildRootAgentWithSubAgents(ctx context.Context, rootAgent sche
 		cfg.SubAgents = adkSubAgents
 	}
 
-	slog.DebugContext(ctx, "Built root agent with sub-agents",
-		"rootAgent", rootAgent.Name, "subAgents", len(cfg.SubAgents), "toolsets", len(cfg.Toolsets))
+	slog.DebugContext(ctx, "Built agent config",
+		"agent", rootAgent.Name, "subAgents", len(cfg.SubAgents), "toolsets", len(cfg.Toolsets))
 
 	agent, err := llmagent.New(cfg)
 	if err != nil {

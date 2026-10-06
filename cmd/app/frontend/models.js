@@ -103,90 +103,61 @@ async function deleteModel(modelId) {
     }
 }
 
-function showCreateModelModal() {
-    const body = `
+const MODEL_PROVIDERS = ['openai', 'openrouter', 'anthropic', 'google', 'groq', 'deepseek', 'minimax', 'ollama'];
+
+// model is undefined for the create form and a modelListData entry for edit.
+function modelFormHTML(model) {
+    const m = model || {};
+    const selected = model ? (model.baseUrl || '') : 'https://api.openai.com/v1';
+    return `
         <div class="form-group">
             <label for="mc-title">Title *</label>
-            <input type="text" id="mc-title" maxlength="20" placeholder="Short title (max 20 chars)">
+            <input type="text" id="mc-title" maxlength="20" value="${escapeHtml(m.title)}" placeholder="Short title (max 20 chars)">
         </div>
         <div class="form-group">
             <label for="mc-provider">Provider *</label>
             <select id="mc-provider" onchange="onProviderChange()">
-                <option value="openai">openai</option>
-                <option value="openrouter">openrouter</option>
-                <option value="anthropic">anthropic</option>
-                <option value="google">google</option>
-                <option value="groq">groq</option>
-                <option value="deepseek">deepseek</option>
-                <option value="minimax">minimax</option>
-                <option value="ollama">ollama</option>
+                ${MODEL_PROVIDERS.map(p => `<option value="${p}" ${m.provider === p ? 'selected' : ''}>${p}</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
             <label for="mc-model">Model Name *</label>
-            <input type="text" id="mc-model" placeholder="e.g. gpt-4o">
+            <input type="text" id="mc-model" value="${escapeHtml(m.modelName)}" placeholder="e.g. gpt-4o">
         </div>
         <div class="form-group">
             <label for="mc-url">Base URL</label>
-            <input type="text" id="mc-url" value="https://api.openai.com/v1">
+            <input type="text" id="mc-url" value="${escapeHtml(selected)}">
         </div>
         <div class="form-group">
             <label for="mc-key">API Key</label>
-            <input type="password" id="mc-key" placeholder="API key">
-        </div>`;
+            <input type="password" id="mc-key" placeholder="${model ? 'Leave blank to keep current key' : 'API key'}">
+        </div>
+        ${model ? `
+        <div class="form-group">
+            <label class="checkbox-label"><input type="checkbox" id="mc-active" ${m.isActive ? 'checked' : ''}> Active</label>
+        </div>` : ''}`;
+}
 
-    showModal('Add Model Credential', body, submitCreateModel, 'Add Model');
+function showCreateModelModal() {
+    showModal('Add Model Credential', modelFormHTML(), submitModelForm, 'Add Model');
 }
 
 function showEditModelModal(modelId) {
     const model = modelListData.find(i => i.id === modelId);
     if (!model) return;
-
-    const body = `
-        <div class="form-group">
-            <label for="mc-title">Title *</label>
-            <input type="text" id="mc-title" maxlength="20" value="${escapeHtml(model.title)}" placeholder="Short title (max 20 chars)">
-        </div>
-        <div class="form-group">
-            <label for="mc-provider">Provider *</label>
-            <select id="mc-provider" onchange="onProviderChange()">
-                <option value="openai" ${model.provider === 'openai' ? 'selected' : ''}>openai</option>
-                <option value="openrouter" ${model.provider === 'openrouter' ? 'selected' : ''}>openrouter</option>
-                <option value="anthropic" ${model.provider === 'anthropic' ? 'selected' : ''}>anthropic</option>
-                <option value="google" ${model.provider === 'google' ? 'selected' : ''}>google</option>
-                <option value="groq" ${model.provider === 'groq' ? 'selected' : ''}>groq</option>
-                <option value="deepseek" ${model.provider === 'deepseek' ? 'selected' : ''}>deepseek</option>
-                <option value="minimax" ${model.provider === 'minimax' ? 'selected' : ''}>minimax</option>
-                <option value="ollama" ${model.provider === 'ollama' ? 'selected' : ''}>ollama</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="mc-model">Model Name *</label>
-            <input type="text" id="mc-model" value="${escapeHtml(model.modelName)}" placeholder="e.g. gpt-4o">
-        </div>
-        <div class="form-group">
-            <label for="mc-url">Base URL</label>
-            <input type="text" id="mc-url" value="${escapeHtml(model.baseUrl || '')}">
-        </div>
-        <div class="form-group">
-            <label for="mc-key">API Key</label>
-            <input type="password" id="mc-key" placeholder="Leave blank to keep current key">
-        </div>
-        <div class="form-group">
-            <label class="checkbox-label"><input type="checkbox" id="mc-active" ${model.isActive ? 'checked' : ''}> Active</label>
-        </div>`;
-
-    showModal('Edit Model Credential', body, () => submitEditModel(modelId), 'Update');
+    showModal('Edit Model Credential', modelFormHTML(model), () => submitModelForm(modelId), 'Update');
 }
 
-async function submitEditModel(modelId) {
+async function submitModelForm(modelId) {
     const params = {
         title: document.getElementById('mc-title').value,
         provider: document.getElementById('mc-provider').value,
         modelName: document.getElementById('mc-model').value,
         baseUrl: document.getElementById('mc-url').value,
         apiKey: document.getElementById('mc-key').value,
-        isActive: document.getElementById('mc-active').checked,
+        ...(modelId
+            ? { isActive: document.getElementById('mc-active').checked }
+            : { scope: 'app' }),
     };
 
     if (!params.title.trim()) {
@@ -195,11 +166,15 @@ async function submitEditModel(modelId) {
     }
 
     try {
-        await window.go.application.App.UpdateModelCredential(modelId, params);
+        if (modelId) {
+            await window.go.application.App.UpdateModelCredential(modelId, params);
+        } else {
+            await window.go.application.App.CreateModelCredential(params);
+        }
         hideModal();
         renderView();
     } catch (err) {
-        showToast('Failed to update model credential: ' + err);
+        showToast(`Failed to ${modelId ? 'update' : 'create'} model credential: ` + err);
     }
 }
 
@@ -219,29 +194,5 @@ function onProviderChange() {
     const urlInput = document.getElementById('mc-url');
     if (providerURLs[provider]) {
         urlInput.value = providerURLs[provider];
-    }
-}
-
-async function submitCreateModel() {
-    const params = {
-        title: document.getElementById('mc-title').value,
-        provider: document.getElementById('mc-provider').value,
-        modelName: document.getElementById('mc-model').value,
-        baseUrl: document.getElementById('mc-url').value,
-        apiKey: document.getElementById('mc-key').value,
-        scope: 'app',
-    };
-
-    if (!params.title.trim()) {
-        showToast('Title is required');
-        return;
-    }
-
-    try {
-        await window.go.application.App.CreateModelCredential(params);
-        hideModal();
-        renderView();
-    } catch (err) {
-        showToast('Failed to create model credential: ' + err);
     }
 }

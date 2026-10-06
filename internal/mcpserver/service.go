@@ -53,7 +53,7 @@ func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (sc
 	if err != nil {
 		return schema.MCP{}, err
 	}
-	return convertDbMCPToSchemaMCP(createdMCP)
+	return ToSchemaMCP(createdMCP)
 }
 
 func (s *service) DeleteMCPServer(ctx context.Context, id uuid.UUID) error {
@@ -71,7 +71,7 @@ func (s *service) ListMCPServers(ctx context.Context) ([]schema.MCP, error) {
 	}
 	mcpServers := make([]schema.MCP, len(mcpServerList))
 	for index, mcpServer := range mcpServerList {
-		if ms, err := convertDbMCPToSchemaMCP(mcpServer); err == nil {
+		if ms, err := ToSchemaMCP(mcpServer); err == nil {
 			mcpServers[index] = ms
 		}
 	}
@@ -101,10 +101,13 @@ func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.
 	if err != nil {
 		return schema.MCP{}, err
 	}
-	return convertDbMCPToSchemaMCP(mcpServer)
+	return ToSchemaMCP(mcpServer)
 }
 
-func convertDbMCPToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
+// ToSchemaMCP converts a generated McpServer row into the API schema type.
+// The generated McpServer rows are structurally identical across the sqlc
+// packages, so agentmcp converts its own row and reuses this.
+func ToSchemaMCP(mcpServer McpServer) (schema.MCP, error) {
 	var authConfig schema.AuthConfig
 	if mcpServer.AuthConfig != nil {
 		if err := json.Unmarshal(mcpServer.AuthConfig, &authConfig); err != nil {

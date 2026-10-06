@@ -35,15 +35,11 @@ type (
 	}
 	// Chat orchestrates chat runs and persists everything.
 	Chat struct {
-		sessionQuery            sessions.Querier
-		eventsQuery             events.Querier
-		runsQuery               runs.Querier
-		sessionStateQuery       sessionstate.Querier
-		agentService            agents.Service
-		modelCredentialsService modelcredentials.Service
-		tokenStore              mcpstore.TokenStore
-		userID                  uuid.UUID
-		appName                 string
+		sessionQuery sessions.Querier
+		eventsQuery  events.Querier
+		runsQuery    runs.Querier
+		runner       Runner
+		appName      string
 	}
 	// RunEvent is the payload emitted to the UI for every streamed event
 	RunEvent struct {
@@ -54,16 +50,13 @@ type (
 )
 
 func NewChat(sessionQuery sessions.Querier, eventsQuery events.Querier, runsQuery runs.Querier, sessionStateQuery sessionstate.Querier, agentService agents.Service, modelCredentialsService modelcredentials.Service, userID uuid.UUID, appName string, tokenStore mcpstore.TokenStore) *Chat {
+	sessionStore := sessions.NewSessionStore(sessionQuery, eventsQuery, sessionStateQuery, appName)
 	return &Chat{
-		sessionQuery:            sessionQuery,
-		eventsQuery:             eventsQuery,
-		runsQuery:               runsQuery,
-		sessionStateQuery:       sessionStateQuery,
-		agentService:            agentService,
-		modelCredentialsService: modelCredentialsService,
-		tokenStore:              tokenStore,
-		userID:                  userID,
-		appName:                 appName,
+		sessionQuery: sessionQuery,
+		eventsQuery:  eventsQuery,
+		runsQuery:    runsQuery,
+		runner:       New(agentService, modelCredentialsService, sessionStore, userID, appName, tokenStore),
+		appName:      appName,
 	}
 }
 
@@ -82,10 +75,6 @@ func (c *Chat) Run(ctx context.Context, sessionID, rootAgentID uuid.UUID, userMe
 	}); err != nil {
 		return schema.Result{}, fmt.Errorf("failed to create run: %w", err)
 	}
-
-	sessionStore := sessions.NewSessionStore(c.sessionQuery, c.eventsQuery, c.sessionStateQuery, c.appName)
-
-	chatRunner := New(c.agentService, c.modelCredentialsService, sessionStore, c.userID, c.appName, c.tokenStore)
 
 	runCtx := invocation.ContextWithInvocation(ctx, runID)
 
@@ -109,7 +98,7 @@ func (c *Chat) Run(ctx context.Context, sessionID, rootAgentID uuid.UUID, userMe
 		emit("chat:event", runEvent)
 		return nil
 	}
-	chatRunError := chatRunner.Run(runCtx, request, onEventFunc)
+	chatRunError := c.runner.Run(runCtx, request, onEventFunc)
 
 	status := enums.RunStatusCompleted
 	interrupted := false
