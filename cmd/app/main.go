@@ -3,8 +3,17 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os/user"
+	"strconv"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -89,6 +98,8 @@ func main() {
 
 	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID, userID, mcpStoreQuery)
 
+	startEmbeddedServer(18391, app)
+
 	err = wails.Run(&options.App{
 		Title:  "Nexflow",
 		Width:  1200,
@@ -107,4 +118,74 @@ func main() {
 		slog.Error(err.Error())
 		panic(err)
 	}
+}
+
+func startEmbeddedServer(port int, app *application.App) {
+	// Serve static frontend build files. The embed contains frontend/ itself,
+	// so mount that subtree at / to keep the app at http://localhost:<port>/.
+	frontend, err := fs.Sub(assets, "frontend")
+	if err != nil {
+		panic(fmt.Errorf("failed to mount embedded frontend: %w", err))
+	}
+	http.Handle("/", http.FileServer(http.FS(frontend)))
+
+	// Expose HTTP/REST endpoints for remote devices
+	http.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status": "running from production app!"}`)
+	})
+
+	// Same App methods Wails binds in the webview, for the browser frontend.
+	http.HandleFunc("/api/rpc/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST required", http.StatusMethodNotAllowed)
+			return
+		}
+		// Any web page can POST to localhost, and these methods can launch MCP
+		// processes, so only the app's own origin may call them.
+		if origin := r.Header.Get("Origin"); origin != "" && !isLocalOrigin(origin, port) {
+			http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+			return
+		}
+
+		var args []json.RawMessage
+		if err = json.NewDecoder(r.Body).Decode(&args); err != nil && !errors.Is(err, io.EOF) {
+			http.Error(w, "invalid arguments: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		result, err := app.HandleRPC(strings.TrimPrefix(r.URL.Path, "/api/rpc/"), args)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if result == nil {
+			fmt.Fprint(w, "null")
+			return
+		}
+		body, err := json.Marshal(result)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(w, string(body))
+	})
+
+	// Loopback only: these endpoints act with the local user's full authority.
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), nil)
+		if err != nil {
+			fmt.Printf("HTTP server error: %v\n", err)
+		}
+	}()
+}
+
+func isLocalOrigin(origin string, port int) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Port() != strconv.Itoa(port) {
+		return false
+	}
+	return u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1"
 }
