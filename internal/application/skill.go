@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -111,6 +113,7 @@ func (a *App) GetSkill() ([]schema.Skill, error) {
 			Content:     k.Content,
 			StorageUri:  &storageUri,
 			IsActive:    k.IsActive,
+			GlobalSkill: k.GlobalSkill,
 		}
 	}
 	return result, nil
@@ -175,4 +178,33 @@ func (a *App) GetSkillPDF(skillId uuid.UUID) (string, error) {
 func (a *App) DeleteSkill(id uuid.UUID) error {
 	slog.Info("Deleting skill", "id", id)
 	return a.skillService.DeleteSkill(a.ctx, a.userID, id)
+}
+
+// OpenSkillFolder reveals the skill folder in the system file manager.
+func (a *App) OpenSkillFolder(skillId uuid.UUID) error {
+	skill, err := a.skillService.GetSkill(a.ctx, skillId)
+	if err != nil {
+		return err
+	}
+	if !skill.StorageUri.Valid || skill.StorageUri.String == "" {
+		return fmt.Errorf("skill %s has no folder on disk", skillId)
+	}
+	return openInFileManager(filepath.Dir(skill.StorageUri.String))
+}
+
+func openInFileManager(path string) error {
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("explorer", path)
+	default:
+		cmd = exec.Command("xdg-open", path)
+	}
+	if goruntime.GOOS == "windows" {
+		// explorer exits 1 even when it opens the folder, so don't wait on it.
+		return cmd.Start()
+	}
+	return cmd.Run()
 }

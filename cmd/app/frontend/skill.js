@@ -24,8 +24,7 @@ function renderSkillList(container) {
                 ${iconSvg('bullet', 'skill-bullet')}
                 <span class="kb-item-title link" onclick="showSkillDetail('${k.id}')">${escapeHtml(k.title)}</span>
                 <div class="kb-item-actions">
-                    <button class="btn btn-secondary btn-small" onclick="showEditSkillModal(skillListData.find(i => i.id === '${k.id}'))">Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="confirmDeleteSkill('${k.id}', '${escapeHtml(k.title)}')">Delete</button>
+                    ${skillActions(k)}
                 </div>
             </div>`;
         }
@@ -33,6 +32,24 @@ function renderSkillList(container) {
     }
 
     container.innerHTML = html;
+}
+
+// Skills synced from the global skills folders belong to the filesystem: they
+// cannot be edited or deleted from the app, only opened.
+function skillActions(skill) {
+    if (skill.globalSkill) {
+        return `<button class="btn btn-secondary btn-small skill-folder-btn" onclick="openSkillFolder('${skill.id}')" title="Open skill folder">${iconSvg('folder', 'icon')}</button>`;
+    }
+    return `<button class="btn btn-secondary btn-small" onclick="showEditSkillModal(skillListData.find(i => i.id === '${skill.id}'))">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="confirmDeleteSkill('${skill.id}', '${escapeHtml(skill.title)}')">Delete</button>`;
+}
+
+async function openSkillFolder(skillId) {
+    try {
+        await window.go.application.App.OpenSkillFolder(skillId);
+    } catch (err) {
+        showToast('Failed to open skill folder: ' + err);
+    }
 }
 
 function switchSkillTab(tabBtn, panelId) {
@@ -88,8 +105,7 @@ async function showSkillDetail(skillId) {
                 <h1>${escapeHtml(skill.title)}</h1>
             </div>
             <div class="page-header-actions">
-                <button class="btn btn-secondary btn-small" onclick="showEditSkillModal(skillListData.find(i => i.id === '${skill.id}'))">Edit</button>
-                <button class="btn btn-danger btn-small" onclick="confirmDeleteSkill('${skill.id}', '${escapeHtml(skill.title)}')">Delete</button>
+                ${skillActions(skill)}
             </div>
         </div>
         <div class="skill-detail-card">

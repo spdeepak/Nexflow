@@ -303,6 +303,16 @@ body {
     color: var(--accent);
 }
 
+.skill-folder-btn {
+    display: inline-flex;
+    align-items: center;
+}
+
+.skill-folder-btn .icon {
+    width: 16px;
+    height: 16px;
+}
+
 .kb-item-title {
     flex: 1;
     margin-left: 2px;

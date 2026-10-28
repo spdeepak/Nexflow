@@ -15,6 +15,7 @@ type Skill struct {
 	Content     *string                `json:"content,omitempty,omitzero"`
 	ContentType enums.SkillContentType `json:"contentType"`
 	CreatedAt   time.Time              `json:"createdAt"`
+	GlobalSkill bool                   `json:"globalSkill"`
 	ID          uuid.UUID              `json:"id"`
 	IsActive    bool                   `json:"isActive"`
 	Metadata    SkillMetadata          `json:"metadata"`

@@ -163,6 +163,7 @@ func (s *service) GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, err
 			Content:     &k.Content.String,
 			ContentType: k.ContentType,
 			CreatedAt:   k.CreatedAt,
+			GlobalSkill: k.GlobalSkill,
 			ID:          k.ID,
 			IsActive:    k.IsActive,
 			StorageUri:  &k.StorageUri.String,
