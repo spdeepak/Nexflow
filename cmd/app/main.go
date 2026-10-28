@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/user"
+	"path"
 	"strconv"
 	"strings"
 
@@ -127,7 +128,15 @@ func startEmbeddedServer(port int, app *application.App) {
 	if err != nil {
 		panic(fmt.Errorf("failed to mount embedded frontend: %w", err))
 	}
-	http.Handle("/", http.FileServer(http.FS(frontend)))
+	// Client-side views have no file of their own, so any unknown extensionless
+	// path falls back to index.html and lets app.js route it (/models, /mcp, ...).
+	fileServer := http.FileServer(http.FS(frontend))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := fs.Stat(frontend, strings.TrimPrefix(r.URL.Path, "/")); err != nil && path.Ext(r.URL.Path) == "" {
+			r.URL.Path = "/"
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 
 	// Expose HTTP/REST endpoints for remote devices
 	http.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +158,7 @@ func startEmbeddedServer(port int, app *application.App) {
 		}
 
 		var args []json.RawMessage
-		if err = json.NewDecoder(r.Body).Decode(&args); err != nil && !errors.Is(err, io.EOF) {
+		if err := json.NewDecoder(r.Body).Decode(&args); err != nil && !errors.Is(err, io.EOF) {
 			http.Error(w, "invalid arguments: "+err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -175,9 +184,9 @@ func startEmbeddedServer(port int, app *application.App) {
 
 	// Loopback only: these endpoints act with the local user's full authority.
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), nil)
+		err = http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", port), nil)
 		if err != nil {
-			fmt.Printf("HTTP server error: %v\n", err)
+			slog.Error("HTTP server error", "error", err)
 		}
 	}()
 }

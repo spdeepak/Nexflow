@@ -4,6 +4,8 @@
 // shortcut: no event stream over HTTP, so chat updates need a reload; add SSE
 // when chat has to work in the browser.
 if (!window.go) {
+    window.__nexflowBrowser = true;
+
     const rpc = (name, args) =>
         fetch('/api/rpc/' + name, {
             method: 'POST',
@@ -21,5 +23,5 @@ if (!window.go) {
         },
     };
 
-    window.runtime = { EventsOn() {}, EventsOff() {}, EventsEmit() {} };
+    window.runtime = { EventsOn() {}, EventsOff() {} };
 }

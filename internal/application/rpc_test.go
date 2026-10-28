@@ -23,7 +23,7 @@ func TestCallMethod(t *testing.T) {
 		want    any
 		wantErr string
 	}{
-		{name: "returns value", method: "Shout", args: `["hi"]`, want: "hi!"},
+		{name: "returns value, drops nil error", method: "Shout", args: `["hi"]`, want: "hi!"},
 		{name: "void method returns nil", method: "OnlyError", args: `[]`},
 		{name: "nil error is not returned as value", method: "Shout", args: `["a"]`, want: "a!"},
 		{name: "error is propagated", method: "Fails", args: `[]`, wantErr: "boom"},

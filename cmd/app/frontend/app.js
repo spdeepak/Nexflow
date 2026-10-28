@@ -2,11 +2,18 @@ let currentView = 'agents';
 
 const VIEW_STORAGE_KEY = 'nexflow.currentView';
 
+const VIEWS = ['agents', 'skill', 'models', 'chat', 'mcp'];
+
 // --- View Switching ---
 
-function switchView(view) {
+function switchView(view, push = true) {
     currentView = view;
     localStorage.setItem(VIEW_STORAGE_KEY, view);
+    // Browsers get a real URL per view; the desktop webview has no address bar
+    // and no route fallback, so it keeps its single URL.
+    if (push && window.__nexflowBrowser && location.pathname !== '/' + view) {
+        history.pushState({ view }, '', '/' + view);
+    }
     document.querySelectorAll('.sidebar-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.view === view);
     });
@@ -113,8 +120,12 @@ window.addEventListener('DOMContentLoaded', () => {
     renderUser();
 
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved && ['agents', 'skill', 'models', 'chat', 'mcp'].includes(saved)) {
-        currentView = saved;
-    }
-    switchView(currentView);
+    const fromPath = location.pathname.slice(1);
+    currentView = VIEWS.includes(fromPath) ? fromPath : (VIEWS.includes(saved) ? saved : currentView);
+    switchView(currentView, false);
+});
+
+window.addEventListener('popstate', () => {
+    const fromPath = location.pathname.slice(1);
+    switchView(VIEWS.includes(fromPath) ? fromPath : 'agents', false);
 });
