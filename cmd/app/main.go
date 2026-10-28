@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os/user"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
@@ -150,9 +149,10 @@ func startEmbeddedServer(port int, app *application.App) {
 			http.Error(w, "POST required", http.StatusMethodNotAllowed)
 			return
 		}
-		// Any web page can POST to localhost, and these methods can launch MCP
-		// processes, so only the app's own origin may call them.
-		if origin := r.Header.Get("Origin"); origin != "" && !isLocalOrigin(origin, port) {
+		// The page must call the API from the origin it was served from. That
+		// holds for localhost and for a tunnel, and it refuses foreign pages,
+		// which also blocks DNS-rebinding attempts.
+		if !isSameOrigin(r) {
 			http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
 			return
 		}
@@ -191,10 +191,21 @@ func startEmbeddedServer(port int, app *application.App) {
 	}()
 }
 
-func isLocalOrigin(origin string, port int) bool {
+// isSameOrigin reports whether a browser request came from the origin that
+// served the page. Requests without an Origin (curl, native clients) pass.
+// The forwarded host is honoured because a tunnel or reverse proxy may present
+// the public hostname there while rewriting Host.
+func isSameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
 	u, err := url.Parse(origin)
-	if err != nil || u.Port() != strconv.Itoa(port) {
+	if err != nil || u.Host == "" {
 		return false
 	}
-	return u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1"
+	if strings.EqualFold(u.Host, r.Host) {
+		return true
+	}
+	return strings.EqualFold(u.Host, r.Header.Get("X-Forwarded-Host"))
 }
