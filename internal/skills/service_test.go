@@ -100,6 +100,71 @@ func TestSyncGlobalSkills(t *testing.T) {
 	require.Empty(t, skill)
 }
 
+func TestSyncGlobalSkillsAcrossDirectories(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	// Installed skills are commonly linked into a skills directory, so the
+	// folder itself is a symlink.
+	linkedTarget := filepath.Join(root, "store", "linked-skill")
+	require.NoError(t, os.MkdirAll(linkedTarget, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(linkedTarget, "SKILL.md"), []byte("# Linked"), 0o600))
+	agentsSkillsDir := filepath.Join(home, ".agents", "skills")
+	require.NoError(t, os.MkdirAll(agentsSkillsDir, 0o755))
+	require.NoError(t, os.Symlink(linkedTarget, filepath.Join(agentsSkillsDir, "linked-skill")))
+
+	// A second skills directory with its own skill.
+	otherSkillsDir := filepath.Join(home, ".claude", "skills")
+	otherSkillDir := filepath.Join(otherSkillsDir, "other-skill")
+	require.NoError(t, os.MkdirAll(otherSkillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(otherSkillDir, "SKILL.md"), []byte("# Other"), 0o600))
+
+	fixture := newTestFixture(t)
+	user := fixture.createUser()
+	ctx := context.Background()
+
+	for range 2 {
+		require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
+		skills, err := fixture.skillService.GetAllAvailableSkill(ctx)
+		require.NoError(t, err)
+		titles := make([]string, len(skills))
+		for i, skill := range skills {
+			titles[i] = skill.Title
+		}
+		require.ElementsMatch(t, []string{"linked-skill", "other-skill"}, titles)
+	}
+}
+
+func TestSyncGlobalSkillsKeepsUserSkills(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".agents", "skills"), 0o755))
+
+	fixture := newTestFixture(t)
+	user := fixture.createUser()
+	ctx := context.Background()
+
+	ownSkillDir := filepath.Join(t.TempDir(), "own-skill")
+	require.NoError(t, os.MkdirAll(ownSkillDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(ownSkillDir, "SKILL.md"), []byte("# Own"), 0o600))
+	_, err := fixture.skillService.CreateSkill(ctx, schema.SkillCreate{
+		Title:       "own-skill",
+		ContentType: enums.SkillContentTypeStorageUri,
+		Scope:       enums.SkillScopeUser,
+		StorageUri:  &ownSkillDir,
+	}, user.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
+	skills, err := fixture.skillService.GetAllAvailableSkill(ctx)
+	require.NoError(t, err)
+	require.Len(t, skills, 1)
+	require.Equal(t, "own-skill", skills[0].Title)
+}
+
 func TestSyncGlobalSkillsMissingGlobalDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

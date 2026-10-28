@@ -200,85 +200,94 @@ func (s *service) SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error 
 
 	allSkillDirectories, err := findSkillsDirs(home)
 	if err != nil {
-		panic(err)
+		slog.ErrorContext(ctx, "failed to find skills directories", "err", err)
+		return err
 	}
+
+	// Collect skill folders across every skills directory before reconciling:
+	// a skill found in one directory must not be treated as orphaned while
+	// syncing another one. The first directory listing a title wins.
+	skillPaths := make(map[string]string) // title -> skill folder
 	for _, skillsDir := range allSkillDirectories {
 		entries, err := os.ReadDir(skillsDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				slog.DebugContext(ctx, "skills directory does not exist", "path", skillsDir)
-				return nil
+				continue
 			}
 			slog.ErrorContext(ctx, "failed to read global skills dir", "err", err)
 			return err
 		}
 
-		// Collect skill titles from filesystem
-		skillPaths := make(map[string]string) // title -> skillMDPath
 		for _, entry := range entries {
-			if !entry.IsDir() {
+			if _, exists := skillPaths[entry.Name()]; exists {
 				continue
 			}
 
+			// Installed skills are often symlinked folders, and DirEntry.IsDir
+			// does not follow symlinks, so stat the folder instead.
 			skillDir := filepath.Join(skillsDir, entry.Name())
-			skillMDPath := filepath.Join(skillDir, "SKILL.md")
-
-			// Check if SKILL.md exists
-			if _, err = os.Stat(skillMDPath); os.IsNotExist(err) {
+			if info, err := os.Stat(skillDir); err != nil || !info.IsDir() {
+				continue
+			}
+			if info, err := os.Stat(filepath.Join(skillDir, "SKILL.md")); err != nil || info.IsDir() {
 				continue
 			}
 
 			// Use directory name as title
-			title := entry.Name()
-			skillPaths[title] = skillDir
+			skillPaths[entry.Name()] = skillDir
 		}
+	}
 
-		// Get all storageUri skills from DB with app scope
-		dbSkills, err := s.querier.GetSkillsByContentTypeAndScope(ctx, GetSkillsByContentTypeAndScopeParams{
+	// Get all storageUri skills from DB with app scope
+	dbSkills, err := s.querier.GetSkillsByContentTypeAndScope(ctx, GetSkillsByContentTypeAndScopeParams{
+		ContentType: enums.SkillContentTypeStorageUri,
+		Scope:       enums.SkillScopeUser,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get storageUri skills from DB", "err", err)
+		return err
+	}
+
+	// Build map for O(1) lookups
+	dbSkillsByTitle := make(map[string]Skill, len(dbSkills))
+	for _, dbSkill := range dbSkills {
+		dbSkillsByTitle[dbSkill.Title] = dbSkill
+	}
+
+	// Delete synced skills that are no longer in the filesystem. Skills the
+	// user added manually point outside the scanned directories and are kept.
+	for _, dbSkill := range dbSkills {
+		if !dbSkill.GlobalSkill {
+			continue
+		}
+		if _, exists := skillPaths[dbSkill.Title]; !exists {
+			slog.InfoContext(ctx, "Deleting orphaned skill", "title", dbSkill.Title, "id", dbSkill.ID)
+			if err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: dbSkill.ID, UserID: dbSkill.UserID}); err != nil {
+				slog.ErrorContext(ctx, "failed to delete orphaned skill", "title", dbSkill.Title, "err", err)
+			}
+		}
+	}
+
+	// Add new skills from filesystem
+	for title, skillDir := range skillPaths {
+		if _, exists := dbSkillsByTitle[title]; exists {
+			continue
+		}
+		globalSkill := true
+		skillCreate := schema.SkillCreate{
+			Title:       title,
 			ContentType: enums.SkillContentTypeStorageUri,
+			Content:     nil,
 			Scope:       enums.SkillScopeUser,
-		})
+			StorageUri:  &skillDir,
+			GlobalSkill: &globalSkill,
+			Metadata:    nil,
+		}
+
+		_, err = s.CreateSkill(ctx, skillCreate, userID)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to get storageUri skills from DB", "err", err)
-			return err
-		}
-
-		// Build map for O(1) lookups
-		dbSkillsByTitle := make(map[string]Skill, len(dbSkills))
-		for _, dbSkill := range dbSkills {
-			dbSkillsByTitle[dbSkill.Title] = dbSkill
-		}
-
-		// Delete skills that are in DB but not in filesystem anymore
-		for _, dbSkill := range dbSkills {
-			if _, exists := skillPaths[dbSkill.Title]; !exists {
-				slog.InfoContext(ctx, "Deleting orphaned skill", "title", dbSkill.Title, "id", dbSkill.ID)
-				if err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: dbSkill.ID, UserID: dbSkill.UserID}); err != nil {
-					slog.ErrorContext(ctx, "failed to delete orphaned skill", "title", dbSkill.Title, "err", err)
-				}
-			}
-		}
-
-		// Add new skills from filesystem
-		for title, skillMDPath := range skillPaths {
-			if _, exists := dbSkillsByTitle[title]; exists {
-				continue
-			}
-			globalSkill := true
-			skillCreate := schema.SkillCreate{
-				Title:       title,
-				ContentType: enums.SkillContentTypeStorageUri,
-				Content:     nil,
-				Scope:       enums.SkillScopeUser,
-				StorageUri:  &skillMDPath,
-				GlobalSkill: &globalSkill,
-				Metadata:    nil,
-			}
-
-			_, err = s.CreateSkill(ctx, skillCreate, userID)
-			if err != nil {
-				slog.ErrorContext(ctx, "failed to create skill from global", "title", title, "err", err)
-			}
+			slog.ErrorContext(ctx, "failed to create skill from global", "title", title, "err", err)
 		}
 	}
 
