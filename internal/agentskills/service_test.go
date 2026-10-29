@@ -176,3 +176,18 @@ func TestDetachSkillToAgent_OK(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, agentSkill)
 }
+
+func TestDetachSkillFromAgent_NotAttached(t *testing.T) {
+	fixture := newTestFixture(t)
+	model := fixture.createAppModel()
+	agent := fixture.createRootAgent(model)
+	user := fixture.createUser()
+	skill := fixture.createSkill(user.ID)
+
+	err := fixture.agentSkillService.DetachSkillFromAgent(context.Background(), agentskills.DetachSkillFromAgentParams{AgentID: agent.ID, SkillID: skill.ID})
+	require.NoError(t, err)
+
+	agentSkill, err := fixture.agentSkillService.ListAgentSkill(context.Background(), agent.ID)
+	require.NoError(t, err)
+	require.Empty(t, agentSkill)
+}

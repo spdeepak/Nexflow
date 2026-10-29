@@ -10,7 +10,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 
+	"github.com/spdeepak/nexflow/internal/agentmcp"
 	"github.com/spdeepak/nexflow/internal/agents"
+	"github.com/spdeepak/nexflow/internal/agentskills"
 	"github.com/spdeepak/nexflow/internal/mcpserver"
 	"github.com/spdeepak/nexflow/internal/mcpstore"
 	"github.com/spdeepak/nexflow/internal/modelcredentials"
@@ -20,14 +22,16 @@ import (
 )
 
 type App struct {
-	ctx          context.Context
-	agentService agents.Service
-	skillService skills.Service
-	modelService modelcredentials.Service
-	mcpService   mcpserver.Service
-	userService  users.Service
-	chatService  *runner.Chat
-	tokenStore   mcpstore.TokenStore
+	ctx               context.Context
+	agentService      agents.Service
+	agentSkillService agentskills.Service
+	agentMCPService   agentmcp.Service
+	skillService      skills.Service
+	modelService      modelcredentials.Service
+	mcpService        mcpserver.Service
+	userService       users.Service
+	chatService       *runner.Chat
+	tokenStore        mcpstore.TokenStore
 	// deviceID is this machine's hardware serial number (or the persisted
 	// fallback generated on first run when the serial was unavailable).
 	deviceID string
@@ -37,18 +41,20 @@ type App struct {
 	validator *validator.Validate
 }
 
-func NewApp(agentService agents.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID string, userID uuid.UUID, tokenStore mcpstore.TokenStore) *App {
+func NewApp(agentService agents.Service, agentSkillService agentskills.Service, agentMCPService agentmcp.Service, kbService skills.Service, modelService modelcredentials.Service, userService users.Service, chatService *runner.Chat, mcpService mcpserver.Service, deviceID string, userID uuid.UUID, tokenStore mcpstore.TokenStore) *App {
 	return &App{
-		agentService: agentService,
-		skillService: kbService,
-		modelService: modelService,
-		deviceID:     deviceID,
-		userID:       userID,
-		userService:  userService,
-		chatService:  chatService,
-		mcpService:   mcpService,
-		tokenStore:   tokenStore,
-		validator:    validator.New(),
+		agentService:      agentService,
+		agentSkillService: agentSkillService,
+		agentMCPService:   agentMCPService,
+		skillService:      kbService,
+		modelService:      modelService,
+		deviceID:          deviceID,
+		userID:            userID,
+		userService:       userService,
+		chatService:       chatService,
+		mcpService:        mcpService,
+		tokenStore:        tokenStore,
+		validator:         validator.New(),
 	}
 }
 

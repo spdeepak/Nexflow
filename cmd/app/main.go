@@ -87,7 +87,7 @@ func main() {
 	mcpStoreQuery := mcpstore.NewTokenStore(mcpstore.New(dbConnection))
 	chatService := runner.NewChat(sessionQuery, eventQuery, runQuery, stateQuery, agentService, modelService, userID, "nexflow", mcpStoreQuery)
 
-	app := application.NewApp(agentService, skillService, modelService, userService, chatService, mcpService, deviceID, userID, mcpStoreQuery)
+	app := application.NewApp(agentService, agentSkillService, agentMcpService, skillService, modelService, userService, chatService, mcpService, deviceID, userID, mcpStoreQuery)
 
 	err = wails.Run(&options.App{
 		Title:  "Nexflow",

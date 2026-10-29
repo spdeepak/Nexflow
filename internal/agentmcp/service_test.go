@@ -179,3 +179,17 @@ func TestDetachMCPFromAgent_OK(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, agentMCPs)
 }
+
+func TestDetachMCPFromAgent_NotAttached(t *testing.T) {
+	fixture := newTestFixture(t)
+	model := fixture.createAppModel()
+	agent := fixture.createRootAgent(model)
+	mcp := fixture.createMCPServer()
+
+	err := fixture.agentMcpService.DetachMCPFromAgent(context.Background(), agentmcp.DetachMCPFromAgentParams{AgentID: agent.ID, McpServerID: mcp.ID})
+	require.NoError(t, err)
+
+	agentMCPs, err := fixture.agentMcpService.ListAgentMCP(context.Background(), agent.ID)
+	require.NoError(t, err)
+	require.Empty(t, agentMCPs)
+}

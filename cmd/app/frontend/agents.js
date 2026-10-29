@@ -130,11 +130,17 @@ async function showAgentDetail(agentId) {
             <div id="sub-agents-container">${subAgentsHtml}</div>
         </div>
         <div style="margin-top:24px">
-            <h2 style="font-size:18px;font-weight:700;margin-bottom:12px">Skills</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h2 style="font-size:18px;font-weight:700;margin:0">Skills</h2>
+                <button class="btn btn-secondary btn-small" onclick="showAttachPicker('skill')">Add Skill</button>
+            </div>
             ${renderSkillsSection(detail.skills || [])}
         </div>
         <div style="margin-top:24px">
-            <h2 style="font-size:18px;font-weight:700;margin-bottom:12px">MCP Servers</h2>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h2 style="font-size:18px;font-weight:700;margin:0">MCP Servers</h2>
+                <button class="btn btn-secondary btn-small" onclick="showAttachPicker('mcp')">Add MCP Server</button>
+            </div>
             ${renderMcpsSection(detail.mcps || [])}
         </div>`;
 
@@ -521,6 +527,7 @@ function renderSkillsSection(skills) {
                 <div class="kb-item-actions">
                     <span class="card-subtitle">${escapeHtml(s.contentType)}</span>
                     <span class="status ${statusClass}">${statusText}</span>
+                    <button class="btn btn-secondary btn-small" onclick="detachAgentRelation('${s.id}', 'skill')">Detach</button>
                 </div>
             </div>`;
     }
@@ -543,11 +550,73 @@ function renderMcpsSection(mcps) {
                     <span class="card-subtitle">${escapeHtml(m.transport)}</span>
                     <span class="card-subtitle" style="font-size:12px;opacity:0.7">${escapeHtml(m.endpoint)}</span>
                     <span class="status ${statusClass}">${statusText}</span>
+                    <button class="btn btn-secondary btn-small" onclick="detachAgentRelation('${m.id}', 'mcp')">Detach</button>
                 </div>
             </div>`;
     }
     html += '</div>';
     return html;
+}
+
+async function showAttachPicker(kind) {
+    const isSkill = kind === 'skill';
+    const label = isSkill ? 'Skill' : 'MCP Server';
+    let available;
+    try {
+        const all = isSkill
+            ? await window.go.application.App.GetSkill()
+            : await window.go.application.App.GetMCPs();
+        const detail = await window.go.application.App.GetAgent(currentAgentId);
+        const attached = new Set(((isSkill ? detail.skills : detail.mcps) || []).map(x => x.id));
+        available = all.filter(x => !attached.has(x.id));
+    } catch (err) {
+        showToast('Failed to load ' + label.toLowerCase() + 's: ' + err);
+        return;
+    }
+
+    if (available.length === 0) {
+        showToast('No unattached ' + label.toLowerCase() + 's available');
+        return;
+    }
+
+    const options = available
+        .map(x => `<option value="${x.id}">${escapeHtml(isSkill ? x.title : x.name)}</option>`)
+        .join('');
+    showModal('Add ' + label, `
+        <div class="form-group">
+            <label for="attach-select">${label}</label>
+            <select id="attach-select">${options}</select>
+        </div>`, async () => {
+        const id = document.getElementById('attach-select').value;
+        try {
+            if (isSkill) {
+                await window.go.application.App.AttachSkillToAgent(currentAgentId, id);
+            } else {
+                await window.go.application.App.AttachMCPToAgent(currentAgentId, id);
+            }
+            hideModal();
+            showToast(label + ' attached');
+            showAgentDetail(currentAgentId);
+        } catch (err) {
+            showToast('Failed to attach ' + label.toLowerCase() + ': ' + err);
+        }
+    }, 'Add');
+}
+
+async function detachAgentRelation(relatedId, kind) {
+    const isSkill = kind === 'skill';
+    const label = isSkill ? 'Skill' : 'MCP Server';
+    try {
+        if (isSkill) {
+            await window.go.application.App.DetachSkillFromAgent(currentAgentId, relatedId);
+        } else {
+            await window.go.application.App.DetachMCPFromAgent(currentAgentId, relatedId);
+        }
+        showToast(label + ' detached');
+        showAgentDetail(currentAgentId);
+    } catch (err) {
+        showToast('Failed to detach ' + label.toLowerCase() + ': ' + err);
+    }
 }
 
 function rerenderSubAgentList() {
