@@ -43,7 +43,7 @@ type MCPCreate struct {
 	Name                string             `json:"name" validate:"notblank"`
 	RequireConfirmation bool               `json:"requireConfirmation,omitempty,omitzero"`
 	Transport           enums.McpTransport `json:"transport,omitempty,omitzero" validate:"required"`
-	UserID              uuid.UUID          `json:"userId" validate:"required"`
+	UserID              uuid.UUID          `json:"userId"`
 }
 
 type MCPUpdate struct {
