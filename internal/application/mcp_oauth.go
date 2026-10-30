@@ -139,20 +139,22 @@ func (a *App) ConnectOAuthMCP(mcpID string) error {
 		return fmt.Errorf("exchanging oauth authorization code: %w", err)
 	}
 
-	if err := a.tokenStore.SaveGrant(ctx, a.deviceID, mcpID, tok); err != nil {
+	// Grants key on users.id (the mcp_oauth_grant FK), which is the same app-user UUID the runner loads with — never the device serial.
+	if err := a.tokenStore.SaveGrant(ctx, a.userID.String(), mcpID, tok); err != nil {
 		return fmt.Errorf("saving oauth grant: %w", err)
 	}
 	return nil
 }
 
-// IsOAuthConnected reports whether the device's user has a stored OAuth grant
-// for the given MCP server, so the UI can surface connect/disconnect state.
+// IsOAuthConnected reports whether the app user has a stored OAuth grant for
+// the given MCP server, so the UI can surface connect/disconnect state.
 func (a *App) IsOAuthConnected(mcpID string) (bool, error) {
 	ctx := a.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	_, err := a.tokenStore.LoadGrant(ctx, a.deviceID, mcpID)
+	// Same key the runner's CredentialProviderFor uses, so the UI cannot show Connected for a grant the run would skip.
+	_, err := a.tokenStore.LoadGrant(ctx, a.userID.String(), mcpID)
 	if err == nil {
 		return true, nil
 	}

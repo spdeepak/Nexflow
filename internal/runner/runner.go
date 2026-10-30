@@ -419,8 +419,9 @@ func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.AgentDetail)
 }
 
 func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) []tool.Toolset {
-	agentMCPs := make([]tool.Toolset, len(apiAgent.Mcps))
-	for index, agentMCP := range apiAgent.Mcps {
+	// Append-only: a skipped server must contribute nothing, not a nil entry.
+	var agentMCPs []tool.Toolset
+	for _, agentMCP := range apiAgent.Mcps {
 		mcpConfig := mcptoolset.Config{
 			RequireConfirmation: agentMCP.RequireConfirmation,
 		}
@@ -461,7 +462,7 @@ func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) [
 		if len(agentMCP.AllowedTools) > 0 {
 			mcpTool = tool.FilterToolset(mcpTool, tool.AllowedToolsPredicate(agentMCP.AllowedTools))
 		}
-		agentMCPs[index] = mcpTool
+		agentMCPs = append(agentMCPs, mcpTool)
 	}
 	return agentMCPs
 }
