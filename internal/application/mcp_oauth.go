@@ -164,6 +164,23 @@ func (a *App) IsOAuthConnected(mcpID string) (bool, error) {
 	return false, fmt.Errorf("checking oauth connection: %w", err)
 }
 
+// DisconnectOAuthMCP drops the app user's OAuth grant for the given MCP server
+// so the UI and the runner both stop seeing it as connected. It is idempotent:
+// a missing grant is not an error, so the button can be pressed twice.
+func (a *App) DisconnectOAuthMCP(mcpID string) error {
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Same (userID, mcpServerID) key ConnectOAuthMCP, IsOAuthConnected and the
+	// runner's CredentialProviderFor use, so disconnecting removes exactly the
+	// grant those reads look up.
+	if err := a.tokenStore.DeleteGrant(ctx, a.userID.String(), mcpID); err != nil {
+		return fmt.Errorf("deleting oauth grant: %w", err)
+	}
+	return nil
+}
+
 type oauthServerConfig struct {
 	ClientID     string   `json:"client_id"`
 	ClientSecret string   `json:"client_secret"`

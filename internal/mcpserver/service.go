@@ -37,13 +37,19 @@ func NewService(db *sql.DB) Service {
 
 func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (schema.MCP, error) {
 	id, _ := uuid.NewV7()
+	// command is nullable in the schema but generated as a plain string (see the
+	// column override in sqlc.yaml); a nil pointer means "no command".
+	var command string
+	if arg.Command != nil {
+		command = *arg.Command
+	}
 	createMcp := CreateMCPServerParams{
 		ID:                  id,
 		UserID:              arg.UserID,
 		Name:                arg.Name,
 		Endpoint:            arg.Endpoint,
 		Transport:           arg.Transport,
-		Command:             *arg.Command,
+		Command:             command,
 		Args:                marshalStringSlice(arg.Args),
 		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
 		AllowedTools:        marshalStringSlice(arg.AllowedTools),
@@ -110,14 +116,46 @@ func (s *service) ListMCPServers(ctx context.Context) ([]schema.MCP, error) {
 }
 
 func (s *service) UpdateMCPServer(ctx context.Context, id uuid.UUID, arg schema.MCPUpdate) (schema.MCP, error) {
+	// transport, command, args and allowed_tools are generated as non-nullable
+	// Go types (column overrides in sqlc.yaml), so the COALESCE in the update
+	// query can never keep the stored value for us: a nil pointer must be filled
+	// in from the current row, otherwise a partial update either dereferences nil
+	// or silently blanks the column.
+	// shortcut: only this read path compensates; ListMCPServers still fails to
+	// scan a hand-inserted row whose command/args/allowed_tools are NULL, fix by
+	// making those columns nullable in sqlc.yaml when a caller actually needs it.
+	current, err := s.querier.GetMCPServer(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return schema.MCP{}, fmt.Errorf("mcp server %s not found", id)
+		}
+		return schema.MCP{}, fmt.Errorf("failed to load mcp server %s: %w", id, err)
+	}
+	transport := current.Transport
+	if arg.Transport != nil {
+		transport = *arg.Transport
+	}
+	command := current.Command
+	if arg.Command != nil {
+		command = *arg.Command
+	}
+	args := current.Args
+	if arg.Args != nil {
+		args = marshalStringSlice(arg.Args)
+	}
+	allowedTools := current.AllowedTools
+	if arg.AllowedTools != nil {
+		allowedTools = marshalStringSlice(arg.AllowedTools)
+	}
+
 	updateMCPServerParams := UpdateMCPServerParams{
 		Name:                util.GetSQLNullString(arg.Name),
 		Endpoint:            util.GetSQLNullString(arg.Endpoint),
-		Transport:           *arg.Transport,
-		Command:             *arg.Command,
-		Args:                marshalStringSlice(arg.Args),
+		Transport:           transport,
+		Command:             command,
+		Args:                args,
 		AuthConfig:          util.ToRawMessage[schema.AuthConfig](&arg.AuthConfig),
-		AllowedTools:        marshalStringSlice(arg.AllowedTools),
+		AllowedTools:        allowedTools,
 		RequireConfirmation: util.GetSQLNullBool(arg.RequireConfirmation),
 		ConfirmationRules:   util.ToNullString[schema.ConfirmationRules](&arg.ConfirmationRules),
 		IsActive:            util.GetSQLNullBool(arg.IsActive),

@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	adkagent "google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
-	adkauth "google.golang.org/adk/v2/auth"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/model/openaimodel"
 	adkrunner "google.golang.org/adk/v2/runner"
@@ -422,39 +419,16 @@ func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) [
 	// Append-only: a skipped server must contribute nothing, not a nil entry.
 	var agentMCPs []tool.Toolset
 	for _, agentMCP := range apiAgent.Mcps {
-		mcpConfig := mcptoolset.Config{
+		transport, err := MCPTransportFor(ctx, agentMCP, r.userID, r.tokenStore)
+		if err != nil {
+			slog.WarnContext(ctx, "MCP not connected, skipping", "name", agentMCP.Name, "mcpServerId", agentMCP.ID, "error", err)
+			continue
+		}
+		mcpTool, err := mcptoolset.New(mcptoolset.Config{
+			// Auth is already baked into the transport by MCPTransportFor.
+			Transport:           transport,
 			RequireConfirmation: agentMCP.RequireConfirmation,
-		}
-		switch agentMCP.Transport {
-		case enums.McpTransportStdIO:
-			cmd := exec.Command(*agentMCP.Command, agentMCP.Args...)
-			mcpConfig.Transport = &mcp.CommandTransport{Command: cmd}
-		default: // streamable_http
-			mcpConfig.Endpoint = *agentMCP.Endpoint
-		}
-
-		if agentMCP.AuthType != nil && agentMCP.AuthConfig != nil {
-			switch *agentMCP.AuthType {
-			case enums.McpAuthTypeBearerToken:
-				if bearerToken, present := agentMCP.AuthConfig["bearer"].(string); present {
-					mcpConfig.Auth = adkauth.StaticToken(bearerToken)
-				}
-			case enums.McpAuthTypeApiKey:
-				if name, namePresent := agentMCP.AuthConfig["name"].(string); namePresent {
-					if value, valuePresent := agentMCP.AuthConfig["value"].(string); valuePresent {
-						mcpConfig.Auth = adkauth.APIKey(name, value)
-					}
-				}
-			case enums.McpAuthTypeOAUTH:
-				provider, err := mcpstore.CredentialProviderFor(ctx, agentMCP.ID.String(), r.userID.String(), agentMCP.ID.String(), r.tokenStore)
-				if err != nil {
-					slog.WarnContext(ctx, "MCP not connected via OAuth, skipping", "name", agentMCP.Name, "mcpServerId", agentMCP.ID, "error", err)
-					continue
-				}
-				mcpConfig.Auth = provider
-			}
-		}
-		mcpTool, err := mcptoolset.New(mcpConfig)
+		})
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to create MCP toolset", "name", agentMCP.Name, "error", err)
 			continue

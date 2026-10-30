@@ -209,3 +209,72 @@ func TestDeleteMCPServer_NotFound_NamesServer(t *testing.T) {
 	require.ErrorContains(t, err, missingID.String())
 	require.NotContains(t, err.Error(), "FOREIGN KEY")
 }
+
+// A streamable_http server has no command. Dereferencing the nil pointer here is
+// what panicked on every create/edit of a non-stdio MCP server.
+func TestCreateMCPServer_NilCommandOnStreamableHTTP(t *testing.T) {
+	fixture := newTestFixture(t)
+	user := fixture.createUser()
+
+	created, err := fixture.mcpService.CreateMCPServer(context.Background(), schema.MCPCreate{
+		Name:      "http-only",
+		Endpoint:  "https://aisenseapi.com/mcp",
+		Transport: enums.McpTransportStreamableHttp,
+		UserID:    user.ID,
+		IsActive:  true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, created.Command)
+	require.Empty(t, *created.Command)
+}
+
+// An update that omits command must keep the stored one: the generated param is
+// a plain string, so passing "" through COALESCE would blank it instead of
+// preserving it.
+func TestUpdateMCPServer_NilCommandKeepsStoredValue(t *testing.T) {
+	fixture := newTestFixture(t)
+	created := fixture.createMCPServer()
+	name := "renamed"
+	transport := enums.McpTransport(enums.McpTransportStreamableHttp)
+
+	updated, err := fixture.mcpService.UpdateMCPServer(context.Background(), created.ID, schema.MCPUpdate{
+		Name:      &name,
+		Transport: &transport,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, updated.Command)
+	require.Equal(t, "docker", *updated.Command)
+	require.Equal(t, transport, updated.Transport)
+	require.Equal(t, name, updated.Name)
+}
+
+// Same for transport (NOT NULL, no default worth overwriting): a nil pointer
+// means "leave it alone", not "write an empty value".
+func TestUpdateMCPServer_NilTransportKeepsStoredValue(t *testing.T) {
+	fixture := newTestFixture(t)
+	created := fixture.createMCPServer()
+	name := "renamed"
+
+	updated, err := fixture.mcpService.UpdateMCPServer(context.Background(), created.ID, schema.MCPUpdate{
+		Name: &name,
+	})
+	require.NoError(t, err)
+	require.Equal(t, created.Transport, updated.Transport)
+	require.Equal(t, name, updated.Name)
+	// Omitted columns survive the round trip rather than being blanked.
+	require.NotNil(t, updated.Command)
+	require.Equal(t, "docker", *updated.Command)
+	require.Equal(t, created.Args, updated.Args)
+	require.Equal(t, created.AllowedTools, updated.AllowedTools)
+	require.Equal(t, created.Endpoint, updated.Endpoint)
+	require.Equal(t, created.IsActive, updated.IsActive)
+}
+
+func TestUpdateMCPServer_NotFound_NamesServer(t *testing.T) {
+	fixture := newTestFixture(t)
+	missingID := uuid.New()
+	name := "renamed"
+
+	_, err := fixture.mcpService.UpdateMCPServer(context.Background(), missingID, schema.MCPUpdate{Name: &name})
+	require.ErrorContains(t, err, missingID.String())
+}

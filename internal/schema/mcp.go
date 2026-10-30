@@ -46,17 +46,25 @@ type MCPCreate struct {
 	UserID              uuid.UUID          `json:"userId"`
 }
 
+// MCPTool is one tool an MCP server advertises, as returned by tool discovery.
+type MCPTool struct {
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
+}
+
 type MCPUpdate struct {
 	validate[MCPUpdate]
-	AllowedTools        []string            `json:"allowedTools,omitempty,omitzero"`
-	Args                []string            `json:"args,omitempty,omitzero"`
-	AuthConfig          AuthConfig          `json:"authConfig,omitempty,omitzero" required_with:"AuthType"`
-	AuthType            *enums.McpAuthType  `json:"authType,omitempty,omitzero"`
-	Command             *string             `json:"command,omitempty,omitzero" required_if:"Transport stdio"`
-	ConfirmationRules   ConfirmationRules   `json:"confirmationRules,omitempty,omitzero"`
-	Endpoint            *string             `json:"endpoint,omitempty,omitzero" required_if:"Transport streamable_http"`
-	IsActive            *bool               `json:"isActive,omitempty,omitzero"`
-	Name                *string             `json:"name,omitempty,omitzero" validate:"notblank"`
+	AllowedTools      []string           `json:"allowedTools,omitempty,omitzero"`
+	Args              []string           `json:"args,omitempty,omitzero"`
+	AuthConfig        AuthConfig         `json:"authConfig,omitempty,omitzero" required_with:"AuthType"`
+	AuthType          *enums.McpAuthType `json:"authType,omitempty,omitzero"`
+	Command           *string            `json:"command,omitempty,omitzero" required_if:"Transport stdio"`
+	ConfirmationRules ConfirmationRules  `json:"confirmationRules,omitempty,omitzero"`
+	Endpoint          *string            `json:"endpoint,omitempty,omitzero" required_if:"Transport streamable_http"`
+	IsActive          *bool              `json:"isActive,omitempty,omitzero"`
+	// omitempty skips nil (the field was absent), which is what makes an update
+	// partial; notblank still rejects an explicit "" or whitespace.
+	Name                *string             `json:"name,omitempty,omitzero" validate:"omitempty,notblank"`
 	RequireConfirmation *bool               `json:"requireConfirmation,omitempty,omitzero"`
 	Transport           *enums.McpTransport `json:"transport,omitempty,omitzero" validate:"required"`
 }

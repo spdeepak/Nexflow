@@ -439,6 +439,40 @@ body {
     cursor: pointer;
 }
 
+/* MCP tool discovery results: scrollable, one row per tool */
+.mcp-tool-list {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fafafa;
+    margin-bottom: 8px;
+}
+
+.mcp-tool-list .checkbox-label {
+    display: flex;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.mcp-tool-list input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    border: none;
+    background: none;
+}
+
+.mcp-tool-desc,
+.mcp-tool-empty {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.mcp-tool-desc {
+    margin: 0 0 6px 22px;
+}
+
 .form-group input,
 .form-group select,
 .form-group textarea {

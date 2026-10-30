@@ -133,8 +133,20 @@ async function renderOAuthStatus(mcpId) {
     statusEl.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
             <span class="status ${connected ? 'status-active' : 'status-inactive'}">${connected ? 'Connected' : 'Not Connected'}</span>
+            ${connected ? `<button class="btn btn-small" onclick="disconnectOAuthMCP('${mcpId}')">Disconnect</button>` : ''}
             <button class="btn btn-small" onclick="connectOAuthMCP('${mcpId}')">${connected ? 'Reconnect' : 'Connect'}</button>
         </div>`;
+}
+
+async function disconnectOAuthMCP(mcpId) {
+    try {
+        await window.go.application.App.DisconnectOAuthMCP(mcpId);
+        showToast('OAuth disconnected');
+        renderOAuthStatus(mcpId);
+        renderView();
+    } catch (err) {
+        showToast('OAuth disconnect failed: ' + err);
+    }
 }
 
 async function connectOAuthMCP(mcpId) {
@@ -192,8 +204,65 @@ function mcpFormHTML(mcp) {
             <label for="mcp-allowed-tools">Allowed Tools (comma separated)</label>
             <input type="text" id="mcp-allowed-tools" ${attr((m.allowedTools || []).join(', '), 'e.g. tool1, tool2')}>
         </div>
+        ${mcp ? `
+        <div class="form-group">
+            <label>Discovered Tools</label>
+            <div id="mcp-tool-list" class="mcp-tool-list"><span class="mcp-tool-empty">Not loaded</span></div>
+            <button type="button" class="btn btn-secondary btn-small" onclick="loadMCPTools('${mcp.id}')">List Tools</button>
+        </div>` : ''}
         ${checkbox('mcp-require-confirm', 'Require Confirmation', m.requireConfirmation)}
         ${checkbox('mcp-active', 'Active', mcp ? m.isActive : true)}`;
+}
+
+// Discovered tools are held only while the edit form is open; the allow-list is
+// persisted solely when the user saves the form.
+let mcpDiscoveredTools = [];
+
+function allowedToolsFromInput() {
+    const input = document.getElementById('mcp-allowed-tools');
+    if (!input) return [];
+    return input.value.split(',').map(v => v.trim()).filter(Boolean);
+}
+
+async function loadMCPTools(mcpId) {
+    const list = document.getElementById('mcp-tool-list');
+    if (!list) return;
+    const allowed = allowedToolsFromInput();
+    list.innerHTML = '<span class="mcp-tool-empty">Connecting…</span>';
+    let tools;
+    try {
+        tools = await window.go.application.App.ListMCPTools(mcpId);
+    } catch (err) {
+        // Leave the allow-list exactly as it was: a failed connection proves
+        // nothing about which tools the server exposes.
+        mcpDiscoveredTools = [];
+        list.innerHTML = '<span class="mcp-tool-empty">Could not connect</span>';
+        showToast('Failed to list tools: ' + err);
+        return;
+    }
+    mcpDiscoveredTools = tools;
+    if (tools.length === 0) {
+        list.innerHTML = '<span class="mcp-tool-empty">Server exposes no tools</span>';
+        return;
+    }
+    // Checkboxes mirror the allow-list only — an empty list stays empty, never
+    // pre-selected as "all tools".
+    list.innerHTML = tools.map((t, i) => `
+        <label class="checkbox-label">
+            <input type="checkbox" data-i="${i}" ${allowed.includes(t.name) ? 'checked' : ''} onchange="toggleMCPTool(this.dataset.i, this.checked)"> ${escapeHtml(t.name)}
+        </label>
+        ${t.description ? `<div class="mcp-tool-desc">${escapeHtml(t.description)}</div>` : ''}`).join('');
+}
+
+function toggleMCPTool(index, checked) {
+    const input = document.getElementById('mcp-allowed-tools');
+    const tool = mcpDiscoveredTools[Number(index)];
+    if (!input || !tool) return;
+    const tools = allowedToolsFromInput();
+    const at = tools.indexOf(tool.name);
+    if (checked && at === -1) tools.push(tool.name);
+    if (!checked && at !== -1) tools.splice(at, 1);
+    input.value = tools.join(', ');
 }
 
 function showAddMCPModal() {

@@ -61,3 +61,27 @@ func TestCreateMCP_BindsAppUserID(t *testing.T) {
 	require.Len(t, mcps, 1)
 	require.Equal(t, user.ID, mcps[0].UserID)
 }
+
+// An update may omit name entirely: notblank on a nil *string used to reject
+// the whole request, which made partial updates impossible. An explicitly blank
+// name must still be rejected.
+func TestUpdateMCP_PartialUpdateOmitsName(t *testing.T) {
+	app, _, mcpID := newTestApp(t, "https://example.com/mcp")
+
+	endpoint := "https://example.com/mcp"
+	transport := enums.McpTransport(enums.McpTransportStreamableHttp)
+
+	require.NoError(t, app.UpdateMCP(mcpID.String(), schema.MCPUpdate{
+		Transport: &transport,
+		Endpoint:  &endpoint,
+	}))
+	updated, err := app.GetMCP(mcpID.String())
+	require.NoError(t, err)
+	require.Equal(t, "test-server", updated.Name)
+
+	require.Error(t, app.UpdateMCP(mcpID.String(), schema.MCPUpdate{
+		Name:      new(""),
+		Transport: &transport,
+		Endpoint:  &endpoint,
+	}))
+}
