@@ -79,7 +79,7 @@ func TestSyncGlobalSkills(t *testing.T) {
 
 	// Sync creates the skill found on the filesystem.
 	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
-	skill, err := fixture.skillService.GetAllAvailableSkill(ctx)
+	skill, err := fixture.skillService.GetAvailableSkill(ctx, user.ID)
 	require.NoError(t, err)
 	require.Len(t, skill, 1)
 	require.Equal(t, "test-skill", skill[0].Title)
@@ -88,14 +88,14 @@ func TestSyncGlobalSkills(t *testing.T) {
 
 	// A second sync must not create duplicates.
 	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
-	skill, err = fixture.skillService.GetAllAvailableSkill(ctx)
+	skill, err = fixture.skillService.GetAvailableSkill(ctx, user.ID)
 	require.NoError(t, err)
 	require.Len(t, skill, 1)
 
 	// Removing the folder removes the orphaned skill from the DB.
 	require.NoError(t, os.RemoveAll(skillDir))
 	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
-	skill, err = fixture.skillService.GetAllAvailableSkill(ctx)
+	skill, err = fixture.skillService.GetAvailableSkill(ctx, user.ID)
 	require.NoError(t, err)
 	require.Empty(t, skill)
 }
@@ -127,7 +127,7 @@ func TestSyncGlobalSkillsAcrossDirectories(t *testing.T) {
 
 	for range 2 {
 		require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
-		skills, err := fixture.skillService.GetAllAvailableSkill(ctx)
+		skills, err := fixture.skillService.GetAvailableSkill(ctx, user.ID)
 		require.NoError(t, err)
 		titles := make([]string, len(skills))
 		for i, skill := range skills {
@@ -159,7 +159,7 @@ func TestSyncGlobalSkillsKeepsUserSkills(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, fixture.skillService.SyncGlobalSkills(ctx, user.ID))
-	skills, err := fixture.skillService.GetAllAvailableSkill(ctx)
+	skills, err := fixture.skillService.GetAvailableSkill(ctx, user.ID)
 	require.NoError(t, err)
 	require.Len(t, skills, 1)
 	require.Equal(t, "own-skill", skills[0].Title)
@@ -174,7 +174,7 @@ func TestSyncGlobalSkillsMissingGlobalDir(t *testing.T) {
 	user := fixture.createUser()
 
 	require.NoError(t, fixture.skillService.SyncGlobalSkills(context.Background(), user.ID))
-	skill, err := fixture.skillService.GetAllAvailableSkill(context.Background())
+	skill, err := fixture.skillService.GetAvailableSkill(context.Background(), user.ID)
 	require.NoError(t, err)
 	require.Empty(t, skill)
 }
@@ -230,4 +230,240 @@ func TestCreateSkillStorageUriLocation(t *testing.T) {
 		require.NotNil(t, skill.StorageUri)
 		require.Equal(t, skillMDPath, *skill.StorageUri)
 	})
+}
+
+func createTextSkill(t *testing.T, fixture *testFixture, owner uuid.UUID, title string, scope enums.SkillScope) schema.Skill {
+	t.Helper()
+	content := "content of " + title
+	skill, err := fixture.skillService.CreateSkill(context.Background(), schema.SkillCreate{
+		Title:       title,
+		ContentType: enums.SkillContentTypeText,
+		Content:     &content,
+		Scope:       scope,
+	}, owner)
+	require.NoError(t, err)
+	return skill
+}
+
+func TestGetAvailableSkillScopes(t *testing.T) {
+	fixture := newTestFixture(t)
+	owner := fixture.createUser()
+	other := fixture.createUser()
+	ctx := context.Background()
+
+	appSkill := createTextSkill(t, fixture, owner.ID, "scoped-app-skill", enums.SkillScopeApp)
+	ownerSkill := createTextSkill(t, fixture, owner.ID, "scoped-owner-skill", enums.SkillScopeUser)
+	createTextSkill(t, fixture, other.ID, "scoped-other-skill", enums.SkillScopeUser)
+
+	listFor := func(user uuid.UUID) []string {
+		t.Helper()
+		items, err := fixture.skillService.GetAvailableSkill(ctx, user)
+		require.NoError(t, err)
+		titles := make([]string, len(items))
+		for i, item := range items {
+			titles[i] = item.Title
+		}
+		return titles
+	}
+
+	require.ElementsMatch(t, []string{"scoped-app-skill", "scoped-owner-skill"}, listFor(owner.ID))
+	require.ElementsMatch(t, []string{"scoped-app-skill", "scoped-other-skill"}, listFor(other.ID))
+
+	// The app-scope row must be stored with user_id NULL (skills_owner_check).
+	row, err := fixture.skillService.GetSkill(ctx, appSkill.ID)
+	require.NoError(t, err)
+	require.Equal(t, uuid.Nil, row.UserID)
+	require.Equal(t, enums.SkillScopeApp, row.Scope)
+
+	// Sanity: user-scope rows keep their owner.
+	row, err = fixture.skillService.GetSkill(ctx, ownerSkill.ID)
+	require.NoError(t, err)
+	require.Equal(t, owner.ID, row.UserID)
+}
+
+func TestCreateSkillOwnershipAndDuplicateTitle(t *testing.T) {
+	fixture := newTestFixture(t)
+	owner := fixture.createUser()
+	ctx := context.Background()
+
+	cases := []struct {
+		name    string
+		pre     *schema.SkillCreate
+		params  schema.SkillCreate
+		wantErr error
+		assert  func(t *testing.T, got schema.Skill, err error)
+	}{
+		{
+			name:   "app scope stores null owner",
+			params: textCreate("create-app-skill", enums.SkillScopeApp),
+			assert: func(t *testing.T, got schema.Skill, err error) {
+				require.NoError(t, err)
+				require.Equal(t, uuid.Nil, got.UserID)
+				require.Equal(t, enums.SkillScopeApp, got.Scope)
+			},
+		},
+		{
+			name:   "user scope stores owner",
+			params: textCreate("create-user-skill", enums.SkillScopeUser),
+			assert: func(t *testing.T, got schema.Skill, err error) {
+				require.NoError(t, err)
+				require.Equal(t, owner.ID, got.UserID)
+				require.Equal(t, enums.SkillScopeUser, got.Scope)
+			},
+		},
+		{
+			name:    "duplicate title rejected",
+			pre:     ptr(textCreate("create-dup-skill", enums.SkillScopeUser)),
+			params:  textCreate("create-dup-skill", enums.SkillScopeApp),
+			wantErr: errors.SkillTitleTaken,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.pre != nil {
+				_, err := fixture.skillService.CreateSkill(ctx, *tc.pre, owner.ID)
+				require.NoError(t, err)
+			}
+			got, err := fixture.skillService.CreateSkill(ctx, tc.params, owner.ID)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				return
+			}
+			tc.assert(t, got, err)
+		})
+	}
+}
+
+func textCreate(title string, scope enums.SkillScope) schema.SkillCreate {
+	content := "content of " + title
+	return schema.SkillCreate{
+		Title:       title,
+		ContentType: enums.SkillContentTypeText,
+		Content:     &content,
+		Scope:       scope,
+	}
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func TestDeleteSkill(t *testing.T) {
+	// Keep AppSkillsDir inside the test sandbox so file-ownership assertions
+	// never touch the real ~/.local/share/nexflow/skills.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	fixture := newTestFixture(t)
+	owner := fixture.createUser()
+	other := fixture.createUser()
+	ctx := context.Background()
+
+	writeSkillMD := func(t *testing.T, dir string) string {
+		t.Helper()
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		path := filepath.Join(dir, "SKILL.md")
+		require.NoError(t, os.WriteFile(path, []byte("# Skill"), 0o600))
+		return path
+	}
+	createStorageSkill := func(t *testing.T, title, dir string) uuid.UUID {
+		t.Helper()
+		skill, err := fixture.skillService.CreateSkill(ctx, schema.SkillCreate{
+			Title:       title,
+			ContentType: enums.SkillContentTypeStorageUri,
+			Scope:       enums.SkillScopeUser,
+			StorageUri:  &dir,
+		}, owner.ID)
+		require.NoError(t, err)
+		return skill.ID
+	}
+
+	cases := []struct {
+		name string
+		// setup returns the skill id and, for file skills, the SKILL.md path.
+		setup    func(t *testing.T) (uuid.UUID, string)
+		deleteBy uuid.UUID
+		wantErr  error
+		rowGone  bool
+		fileGone bool // only checked when setup returned a file path
+	}{
+		{
+			name: "user scope skill is deleted",
+			setup: func(t *testing.T) (uuid.UUID, string) {
+				return createTextSkill(t, fixture, owner.ID, "del-user-skill", enums.SkillScopeUser).ID, ""
+			},
+			deleteBy: owner.ID,
+			rowGone:  true,
+		},
+		{
+			name: "app scope skill is deleted",
+			setup: func(t *testing.T) (uuid.UUID, string) {
+				return createTextSkill(t, fixture, owner.ID, "del-app-skill", enums.SkillScopeApp).ID, ""
+			},
+			deleteBy: owner.ID,
+			rowGone:  true,
+		},
+		{
+			name: "skill owned by another user survives",
+			setup: func(t *testing.T) (uuid.UUID, string) {
+				return createTextSkill(t, fixture, other.ID, "del-foreign-skill", enums.SkillScopeUser).ID, ""
+			},
+			deleteBy: owner.ID,
+			wantErr:  errors.SkillNotFound,
+			rowGone:  false,
+		},
+		{
+			name: "file outside the skills dir survives",
+			setup: func(t *testing.T) (uuid.UUID, string) {
+				dir := filepath.Join(t.TempDir(), "outside-skill")
+				file := writeSkillMD(t, dir)
+				return createStorageSkill(t, "del-outside-skill", dir), file
+			},
+			deleteBy: owner.ID,
+			rowGone:  true,
+			fileGone: false,
+		},
+		{
+			name: "file inside the skills dir is removed",
+			setup: func(t *testing.T) (uuid.UUID, string) {
+				dir := filepath.Join(AppSkillsDir(), "inside-skill")
+				file := writeSkillMD(t, dir)
+				return createStorageSkill(t, "del-inside-skill", dir), file
+			},
+			deleteBy: owner.ID,
+			rowGone:  true,
+			fileGone: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			id, file := tc.setup(t)
+
+			err := fixture.skillService.DeleteSkill(ctx, tc.deleteBy, id)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// A failed delete must never report success while the row survives,
+			// and a successful delete must actually remove the row.
+			_, getErr := fixture.skillService.GetSkill(ctx, id)
+			if tc.rowGone {
+				require.Error(t, getErr)
+			} else {
+				require.NoError(t, getErr)
+			}
+
+			if file != "" {
+				_, statErr := os.Stat(file)
+				if tc.fileGone {
+					require.ErrorIs(t, statErr, os.ErrNotExist)
+				} else {
+					require.NoError(t, statErr, "user file must survive deletion")
+				}
+			}
+		})
+	}
 }

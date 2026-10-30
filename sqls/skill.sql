@@ -1,6 +1,10 @@
 -- name: CreateSkill :one
+-- user_id must be NULL for app scope (skills_owner_check), so the DB zeroes
+-- it here rather than trusting every caller to remember.
 INSERT INTO skills (id, user_id, scope, title, content_type, content, storage_uri, global_skill, metadata)
-VALUES (sqlc.arg('id'), sqlc.arg('user_id'), sqlc.arg('scope'), sqlc.arg('title'), sqlc.arg('content_type'),
+VALUES (sqlc.arg('id'),
+        CASE WHEN sqlc.arg('scope') = 'app' THEN NULL ELSE sqlc.arg('user_id') END,
+        sqlc.arg('scope'), sqlc.arg('title'), sqlc.arg('content_type'),
         sqlc.arg('content'), sqlc.arg('storage_uri'), sqlc.arg('global_skill'), sqlc.arg('metadata'))
 RETURNING id, user_id, scope, title, content_type, content, storage_uri, metadata, is_active, created_at, updated_at;
 
@@ -21,6 +25,7 @@ FROM skills
 WHERE id = ?1;
 
 -- name: GetAvailableSkill :many
+-- Ownership filter: every user sees app-scope skills plus their own.
 SELECT id,
        user_id,
        scope,
@@ -35,26 +40,8 @@ SELECT id,
        updated_at,
        (SELECT COUNT(*) FROM agent_skills WHERE skill_id = skills.id) AS agent_count
 FROM skills
-WHERE (scope = 'app' OR user_id = sqlc.narg('user_id'))
-  AND (CAST(sqlc.narg('is_active') as BOOLEAN) IS NULL OR is_active = sqlc.narg('is_active'))
-  AND (scope = sqlc.narg('scope') IS NULL OR scope = sqlc.narg('scope'))
-ORDER BY created_at DESC;
-
--- name: GetAllAvailableSkill :many
-SELECT id,
-       user_id,
-       scope,
-       title,
-       content_type,
-       content,
-       storage_uri,
-       global_skill,
-       metadata,
-       is_active,
-       created_at,
-       updated_at,
-       (SELECT COUNT(*) FROM agent_skills WHERE skill_id = skills.id) AS agent_count
-FROM skills
+WHERE scope = 'app'
+   OR user_id = sqlc.arg('user_id')
 ORDER BY created_at DESC;
 
 -- name: UpdateSkill :one
@@ -69,11 +56,11 @@ SET title        = COALESCE(sqlc.narg('title'), title),
 WHERE id = sqlc.arg('id')
 RETURNING id, user_id, scope, title, content_type, content, storage_uri, global_skill, metadata, is_active, created_at, updated_at;
 
--- name: DeleteSkill :exec
+-- name: DeleteSkill :execresult
 DELETE
 FROM skills
 WHERE id = sqlc.arg('id')
-  and user_id = sqlc.arg('user_id');
+  AND (scope = 'app' OR user_id = sqlc.arg('user_id'));
 
 -- name: GetSkillByTitle :one
 SELECT id,

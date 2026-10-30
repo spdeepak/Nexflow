@@ -25,9 +25,8 @@ type (
 	Service interface {
 		CreateSkill(ctx context.Context, arg schema.SkillCreate, userID uuid.UUID) (schema.Skill, error)
 		DeleteSkill(ctx context.Context, userId, id uuid.UUID) error
-		GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, error)
+		GetAvailableSkill(ctx context.Context, userID uuid.UUID) ([]schema.Skill, error)
 		GetSkill(ctx context.Context, id uuid.UUID) (Skill, error)
-		GetSkillByTitle(ctx context.Context, title string) (Skill, error)
 		SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error
 		UpdateSkill(ctx context.Context, id uuid.UUID, arg schema.SkillUpdate) (Skill, error)
 	}
@@ -40,6 +39,14 @@ func NewService(querier Querier) Service {
 }
 
 func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userID uuid.UUID) (schema.Skill, error) {
+	// Title is the skill name the runner exposes to ADK, so it must be unique.
+	if _, err := s.querier.GetSkillByTitle(ctx, arg.Title); err == nil {
+		return schema.Skill{}, errors.SkillTitleTaken
+	} else if err != sql.ErrNoRows {
+		slog.ErrorContext(ctx, "error checking skill title", "err", err)
+		return schema.Skill{}, errors.SkillCreationFailed
+	}
+
 	var metadata []byte
 	if arg.Metadata != nil {
 		metadata, _ = json.Marshal(arg.Metadata)
@@ -67,6 +74,9 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 		storageUri = sql.NullString{String: *arg.StorageUri, Valid: true}
 	}
 	id, _ := uuid.NewV7()
+	// shortcut: UserID is interface{} because sqlc loses the column type across
+	// the NULL-for-app CASE; uuid satisfies driver.Valuer so it binds fine.
+	// Upgrade path: uuid.NullUUID override in sqlc.yaml for a typed param.
 	createSkillParams := CreateSkillParams{
 		ID:          id,
 		UserID:      userID,
@@ -133,27 +143,53 @@ func (s *service) DeleteSkill(ctx context.Context, userId, id uuid.UUID) error {
 	skill, err := s.GetSkill(ctx, id)
 	if err != nil {
 		slog.ErrorContext(ctx, "couldn't find skill", "err", err)
-		return errors.SkillDeletionFailed
+		return errors.SkillNotFound
 	}
-	if skill.StorageUri.Valid {
-		err = os.Remove(skill.StorageUri.String)
-		if err != nil {
-			slog.ErrorContext(ctx, "error deleting skill file", "err", err, "filePath", skill.StorageUri.String)
-			return errors.SkillDeletionFailed
-		}
-	}
-	err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: id, UserID: userId})
+	// Delete the row first so a no-op (someone else's skill) never destroys files.
+	res, err := s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: id, UserID: userId})
 	if err != nil {
 		slog.ErrorContext(ctx, "error deleting skill", "err", err)
 		return errors.SkillDeletionFailed
 	}
+	affected, err := res.RowsAffected()
+	if err != nil || affected == 0 {
+		return errors.SkillNotFound
+	}
+	// Only remove files Nexflow itself owns. Folder skills picked from
+	// elsewhere stay on disk, and synced global skills (global_skill = 1) are
+	// re-added from ~/.agents/skills by SyncGlobalSkills, so their files are
+	// never touched either.
+	if skill.StorageUri.Valid && !skill.GlobalSkill && withinDir(skill.StorageUri.String, AppSkillsDir()) {
+		if err = os.Remove(skill.StorageUri.String); err != nil {
+			slog.ErrorContext(ctx, "error deleting skill file", "err", err, "filePath", skill.StorageUri.String)
+			return errors.SkillDeletionFailed
+		}
+	}
 	return nil
 }
 
-func (s *service) GetAllAvailableSkill(ctx context.Context) ([]schema.Skill, error) {
-	skill, err := s.querier.GetAllAvailableSkill(ctx)
+// AppSkillsDir is the only directory Nexflow owns on disk. Returns "" when the
+// home directory is unavailable, which callers treat as "own nothing".
+func AppSkillsDir() string {
+	home, err := os.UserHomeDir()
 	if err != nil {
-		slog.ErrorContext(ctx, "error getting all available skill", "err", err)
+		return ""
+	}
+	return filepath.Join(home, ".local/share/nexflow/skills")
+}
+
+func withinDir(path, dir string) bool {
+	if dir == "" {
+		return false
+	}
+	rel, err := filepath.Rel(dir, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func (s *service) GetAvailableSkill(ctx context.Context, userID uuid.UUID) ([]schema.Skill, error) {
+	skill, err := s.querier.GetAvailableSkill(ctx, userID)
+	if err != nil {
+		slog.ErrorContext(ctx, "error getting available skills", "err", err)
 		return nil, err
 	}
 	allSkill := make([]schema.Skill, len(skill))
@@ -178,15 +214,6 @@ func (s *service) GetSkill(ctx context.Context, id uuid.UUID) (Skill, error) {
 	skill, err := s.querier.GetSkill(ctx, id)
 	if err != nil {
 		slog.ErrorContext(ctx, "error getting skill", "err", err)
-		return Skill{}, err
-	}
-	return skill, nil
-}
-
-func (s *service) GetSkillByTitle(ctx context.Context, title string) (Skill, error) {
-	skill, err := s.querier.GetSkillByTitle(ctx, title)
-	if err != nil {
-		slog.ErrorContext(ctx, "error getting skill by title", "err", err)
 		return Skill{}, err
 	}
 	return skill, nil
@@ -264,7 +291,7 @@ func (s *service) SyncGlobalSkills(ctx context.Context, userID uuid.UUID) error 
 		}
 		if _, exists := skillPaths[dbSkill.Title]; !exists {
 			slog.InfoContext(ctx, "Deleting orphaned skill", "title", dbSkill.Title, "id", dbSkill.ID)
-			if err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: dbSkill.ID, UserID: dbSkill.UserID}); err != nil {
+			if _, err = s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: dbSkill.ID, UserID: dbSkill.UserID}); err != nil {
 				slog.ErrorContext(ctx, "failed to delete orphaned skill", "title", dbSkill.Title, "err", err)
 			}
 		}

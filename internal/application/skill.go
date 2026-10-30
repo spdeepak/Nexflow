@@ -15,17 +15,14 @@ import (
 	"github.com/spdeepak/nexflow/internal/enums"
 	"github.com/spdeepak/nexflow/internal/errors"
 	"github.com/spdeepak/nexflow/internal/schema"
+	"github.com/spdeepak/nexflow/internal/skills"
 	"github.com/spdeepak/nexflow/internal/util"
 )
 
 func skillsDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "."
-	}
-	skillDirPath := filepath.Join(home, ".local/share/nexflow/skills")
-	_ = os.MkdirAll(skillDirPath, 0o700)
-	return skillDirPath
+	dir := skills.AppSkillsDir()
+	_ = os.MkdirAll(dir, 0o700)
+	return dir
 }
 
 func (a *App) CreateSkill(params schema.SkillCreate) error {
@@ -95,7 +92,7 @@ func (a *App) GetSkill() ([]schema.Skill, error) {
 		slog.ErrorContext(a.ctx, "Failed to sync global skills", "error", err)
 	}
 
-	items, err := a.skillService.GetAllAvailableSkill(a.ctx)
+	items, err := a.skillService.GetAvailableSkill(a.ctx, a.userID)
 	if err != nil {
 		slog.ErrorContext(a.ctx, "Error getting skill", "error", err)
 		return nil, err
