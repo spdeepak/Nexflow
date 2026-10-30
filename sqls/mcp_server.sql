@@ -54,6 +54,32 @@ WHERE id = sqlc.arg('id')
 RETURNING id, user_id, name, endpoint, transport, command, args, auth_type, auth_config, allowed_tools,
     require_confirmation, confirmation_rules, is_active, created_at, updated_at;;
 
+-- name: GetMCPServer :one
+SELECT id,
+       user_id,
+       name,
+       endpoint,
+       transport,
+       command,
+       args,
+       auth_type,
+       auth_config,
+       allowed_tools,
+       require_confirmation,
+       confirmation_rules,
+       is_active,
+       created_at,
+       updated_at
+FROM mcp_server
+WHERE id = sqlc.arg('id');
+
+-- agent_mcp_server.mcp_server_id is ON DELETE RESTRICT, so every delete of a
+-- server must drop its agent links first (see service.DeleteMCPServer).
+-- name: DetachAgentsFromMCPServer :exec
+DELETE
+FROM agent_mcp_server
+WHERE mcp_server_id = sqlc.arg('id');
+
 -- name: DeleteMCPServer :exec
 DELETE
 FROM mcp_server

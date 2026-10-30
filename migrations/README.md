@@ -105,6 +105,9 @@ column can be added and indexed. Attach skill to agents via `agent_skills`.
 Join table: which skill is attached to which agent (many-to-many). At runtime an agent retrieves only the documents
 linked here, so the same doc can be reused across agents without duplication.
 
+Delete semantics: both foreign keys are `ON DELETE CASCADE`, so deleting a skill or an agent removes the join rows at
+the database level. Attaching is idempotent (`ON CONFLICT (agent_id, skill_id) DO NOTHING`).
+
 ### mcp_server
 
 MCP (Model Context Protocol) server configurations. Each row describes a remote or local MCP server that agents can
@@ -132,3 +135,12 @@ Join table: which MCP server is attached to which agent (many-to-many). At runti
 `mcptoolset.Config`
 for each linked MCP server and passes them as `Toolsets` on the agent's `llmagent.Config`. MCPs are scoped per-agent to
 limit tool surface area, reduce token usage, and enforce least-privilege access.
+
+Delete semantics: both foreign keys are `ON DELETE RESTRICT` — a raw SQL delete of an agent or a server that still has
+links fails at the database level, so a relation can never be silently orphaned. The application performs the detach
+explicitly: `mcpserver.DeleteMCPServer` runs `DetachAgentsFromMCPServer` and the server delete inside one transaction.
+Attaching is idempotent (`ON CONFLICT (agent_id, mcp_server_id) DO NOTHING`).
+
+Contrast with `agent_skills`, which cascades instead; the two join tables were deliberately kept on different
+strategies. Here the application owns the detach so it can report a named, user-facing error and keep the detach and
+the delete atomic.

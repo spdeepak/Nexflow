@@ -2,7 +2,10 @@ package mcpserver
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -14,6 +17,7 @@ import (
 type (
 	service struct {
 		querier Querier
+		db      *sql.DB
 	}
 
 	Service interface {
@@ -24,9 +28,10 @@ type (
 	}
 )
 
-func NewService(querier Querier) Service {
+func NewService(db *sql.DB) Service {
 	return &service{
-		querier: querier,
+		querier: New(db),
+		db:      db,
 	}
 }
 
@@ -56,10 +61,36 @@ func (s *service) CreateMCPServer(ctx context.Context, arg schema.MCPCreate) (sc
 	return ToSchemaMCP(createdMCP)
 }
 
+// DeleteMCPServer deletes the server and detaches it from every agent in one
+// transaction. agent_mcp_server keeps its ON DELETE RESTRICT foreign keys so a
+// stray delete can never silently orphan relations; the application layer
+// performs the detach explicitly instead.
 func (s *service) DeleteMCPServer(ctx context.Context, id uuid.UUID) error {
-	if err := s.querier.DeleteMCPServer(ctx, id); err != nil {
+	server, err := s.querier.GetMCPServer(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("mcp server %s not found", id)
+		}
+		return fmt.Errorf("failed to load mcp server %s: %w", id, err)
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete mcp server %s: %w", server.Name, err)
+	}
+	defer func() { _ = tx.Rollback() }() // no-op after a successful commit
+
+	queries := New(tx)
+	if err := queries.DetachAgentsFromMCPServer(ctx, id); err != nil {
+		slog.ErrorContext(ctx, "Failed to detach MCP server from agents", "id", id, "error", err)
+		return fmt.Errorf("failed to delete mcp server %s: %w", server.Name, err)
+	}
+	if err := queries.DeleteMCPServer(ctx, id); err != nil {
 		slog.ErrorContext(ctx, "Failed to delete MCP server", "id", id, "error", err)
-		return err
+		return fmt.Errorf("failed to delete mcp server %s: %w", server.Name, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to delete mcp server %s: %w", server.Name, err)
 	}
 	return nil
 }

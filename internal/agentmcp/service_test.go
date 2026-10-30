@@ -54,7 +54,7 @@ func newTestFixture(test *testing.T) *testFixture {
 	return &testFixture{
 		test:            test,
 		agentMcpService: agentmcp.NewService(agentmcp.New(conn)),
-		mcpService:      mcpserver.NewService(mcpserver.New(conn)),
+		mcpService:      mcpserver.NewService(conn),
 		userService:     users.NewService(users.New(conn)),
 		agentService:    agents.NewService(agents.New(conn), agentskills.NewService(agentskills.New(conn)), agentmcp.NewService(agentmcp.New(conn)), modelCredentialsService),
 		modelService:    modelCredentialsService,
@@ -159,6 +159,38 @@ func TestLinkAgentAndMCP_OK(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, agentMCPs)
 	require.Len(t, agentMCPs, 1)
+}
+
+// A double-click on "Add" must not surface a constraint error.
+func TestLinkAgentAndMCP_AlreadyLinked(t *testing.T) {
+	fixture := newTestFixture(t)
+	model := fixture.createAppModel()
+	agent := fixture.createRootAgent(model)
+	mcp := fixture.createMCPServer()
+
+	params := agentmcp.LinkAgentAndMCPParams{AgentID: agent.ID, McpServerID: mcp.ID}
+	require.NoError(t, fixture.agentMcpService.LinkAgentAndMCP(context.Background(), params))
+	require.NoError(t, fixture.agentMcpService.LinkAgentAndMCP(context.Background(), params))
+
+	agentMCPs, err := fixture.agentMcpService.ListAgentMCP(context.Background(), agent.ID)
+	require.NoError(t, err)
+	require.Len(t, agentMCPs, 1)
+}
+
+// Deleting an attached server detaches it from every agent first; the
+// RESTRICT foreign keys must never surface as a raw driver error.
+func TestDeleteMCPServer_Attached(t *testing.T) {
+	fixture := newTestFixture(t)
+	model := fixture.createAppModel()
+	agent := fixture.createRootAgent(model)
+	mcp := fixture.createMCPServer()
+	require.NoError(t, fixture.agentMcpService.LinkAgentAndMCP(context.Background(), agentmcp.LinkAgentAndMCPParams{AgentID: agent.ID, McpServerID: mcp.ID}))
+
+	require.NoError(t, fixture.mcpService.DeleteMCPServer(context.Background(), mcp.ID))
+
+	agentMCPs, err := fixture.agentMcpService.ListAgentMCP(context.Background(), agent.ID)
+	require.NoError(t, err)
+	require.Empty(t, agentMCPs)
 }
 
 func TestDetachMCPFromAgent_OK(t *testing.T) {

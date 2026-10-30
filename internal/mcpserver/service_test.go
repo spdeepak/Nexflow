@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"testing"
 	"time"
@@ -20,6 +21,7 @@ type testFixture struct {
 	test        *testing.T
 	mcpService  Service
 	userService users.Service
+	conn        *sql.DB
 }
 
 func newTestFixture(test *testing.T) *testFixture {
@@ -44,8 +46,9 @@ func newTestFixture(test *testing.T) *testFixture {
 
 	return &testFixture{
 		test:        test,
-		mcpService:  NewService(New(conn)),
+		mcpService:  NewService(conn),
 		userService: users.NewService(users.New(conn)),
+		conn:        conn,
 	}
 }
 
@@ -147,4 +150,62 @@ func TestListMCPServers_OK(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, mcpServers)
 	require.Len(t, mcpServers, 1)
+}
+
+// attachToAgent seeds an agent row and the agent_mcp_server join row directly.
+// The mcpserver package cannot import the agents/agentmcp services (they
+// already import it), so the fixture writes the relation rows itself.
+func (tf *testFixture) attachToAgent(mcpID uuid.UUID) uuid.UUID {
+	tf.test.Helper()
+	agentID := uuid.New()
+	_, err := tf.conn.ExecContext(context.Background(),
+		`INSERT INTO agents (id, name) VALUES (?, ?)`, agentID, "agent-"+agentID.String())
+	require.NoError(tf.test, err)
+	_, err = tf.conn.ExecContext(context.Background(),
+		`INSERT INTO agent_mcp_server (agent_id, mcp_server_id) VALUES (?, ?)`, agentID, mcpID)
+	require.NoError(tf.test, err)
+	return agentID
+}
+
+func (tf *testFixture) agentMCPCount(mcpID uuid.UUID) int {
+	tf.test.Helper()
+	var count int
+	err := tf.conn.QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM agent_mcp_server WHERE mcp_server_id = ?`, mcpID).Scan(&count)
+	require.NoError(tf.test, err)
+	return count
+}
+
+func TestDeleteMCPServer_OK(t *testing.T) {
+	fixture := newTestFixture(t)
+	mcp := fixture.createMCPServer()
+	fixture.attachToAgent(mcp.ID)
+	require.Equal(t, 1, fixture.agentMCPCount(mcp.ID))
+
+	err := fixture.mcpService.DeleteMCPServer(context.Background(), mcp.ID)
+	require.NoError(t, err)
+
+	// The join rows must be gone too, not left dangling.
+	require.Zero(t, fixture.agentMCPCount(mcp.ID))
+	mcpServers, err := fixture.mcpService.ListMCPServers(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, mcpServers)
+}
+
+func TestDeleteMCPServer_Unattached(t *testing.T) {
+	fixture := newTestFixture(t)
+	mcp := fixture.createMCPServer()
+
+	err := fixture.mcpService.DeleteMCPServer(context.Background(), mcp.ID)
+	require.NoError(t, err)
+	require.Zero(t, fixture.agentMCPCount(mcp.ID))
+}
+
+func TestDeleteMCPServer_NotFound_NamesServer(t *testing.T) {
+	fixture := newTestFixture(t)
+	missingID := uuid.New()
+
+	err := fixture.mcpService.DeleteMCPServer(context.Background(), missingID)
+	require.ErrorContains(t, err, missingID.String())
+	require.NotContains(t, err.Error(), "FOREIGN KEY")
 }

@@ -44,7 +44,7 @@ func TestCreateMCP_BindsAppUserID(t *testing.T) {
 	app := &App{
 		ctx:        context.Background(),
 		userID:     user.ID,
-		mcpService: mcpserver.NewService(mcpserver.New(conn)),
+		mcpService: mcpserver.NewService(conn),
 	}
 
 	err = app.CreateMCP(schema.MCPCreate{

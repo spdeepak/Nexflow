@@ -53,7 +53,7 @@ func newTestFixture(test *testing.T) *testFixture {
 	conn := db.Connect(dbConfig)
 	agentSkillService := agentskills.NewService(agentskills.New(conn))
 	agentMCPService := agentmcp.NewService(agentmcp.New(conn))
-	mcpService := mcpserver.NewService(mcpserver.New(conn))
+	mcpService := mcpserver.NewService(conn)
 	modelCredentialService := modelcredentials.NewService(modelcredentials.New(conn))
 	return &testFixture{
 		test:              test,

@@ -56,8 +56,7 @@ func main() {
 	agentsQuery := agents.New(dbConnection)
 	agentService := agents.NewService(agentsQuery, agentSkillService, agentMcpService, modelService)
 	// MCP
-	mcpQuery := mcpserver.New(dbConnection)
-	mcpService := mcpserver.NewService(mcpQuery)
+	mcpService := mcpserver.NewService(dbConnection)
 	// User
 	userQuery := users.New(dbConnection)
 	userService := users.NewService(userQuery)

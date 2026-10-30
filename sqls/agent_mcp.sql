@@ -1,7 +1,8 @@
 -- name: LinkAgentAndMCP :exec
 INSERT INTO agent_mcp_server (agent_id, mcp_server_id)
 VALUES (sqlc.arg('agent_id'),
-        sqlc.arg('mcp_server_id'));
+        sqlc.arg('mcp_server_id'))
+ON CONFLICT (agent_id, mcp_server_id) DO NOTHING;
 
 -- name: ListAgentMCP :many
 SELECT m.id,
