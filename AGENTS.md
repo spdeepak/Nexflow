@@ -2,8 +2,7 @@
 
 ## 1. Project Overview
 
-Nexflow is a local-first, Wails v2 desktop application for designing, managing, and running hierarchical AI-agent
-systems.
+Nexflow is a local-first, Wails v2 desktop application for designing, managing, and running hierarchical AI-agent systems.
 
 The application is primarily a Go application with a vanilla HTML/CSS/JavaScript frontend.
 
