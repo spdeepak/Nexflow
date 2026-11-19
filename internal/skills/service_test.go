@@ -190,7 +190,7 @@ func TestCreateSkillStorageUriLocation(t *testing.T) {
 			ContentType: enums.SkillContentTypeStorageUri,
 			Scope:       enums.SkillScopeUser,
 		}, user.ID)
-		require.ErrorIs(t, err, errors.SkillInvalidLocation)
+		require.ErrorIs(t, err, errors.ErrSkillInvalidLocation)
 	})
 
 	t.Run("non existent location", func(t *testing.T) {
@@ -201,7 +201,7 @@ func TestCreateSkillStorageUriLocation(t *testing.T) {
 			Scope:       enums.SkillScopeUser,
 			StorageUri:  &path,
 		}, user.ID)
-		require.ErrorIs(t, err, errors.SkillInvalidLocation)
+		require.ErrorIs(t, err, errors.ErrSkillInvalidLocation)
 	})
 
 	t.Run("folder without SKILL.md", func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestCreateSkillStorageUriLocation(t *testing.T) {
 			Scope:       enums.SkillScopeUser,
 			StorageUri:  &dir,
 		}, user.ID)
-		require.ErrorIs(t, err, errors.SkillInvalidLocation)
+		require.ErrorIs(t, err, errors.ErrSkillInvalidLocation)
 	})
 
 	t.Run("folder with SKILL.md", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestCreateSkillOwnershipAndDuplicateTitle(t *testing.T) {
 			name:    "duplicate title rejected",
 			pre:     ptr(textCreate("create-dup-skill", enums.SkillScopeUser)),
 			params:  textCreate("create-dup-skill", enums.SkillScopeApp),
-			wantErr: errors.SkillTitleTaken,
+			wantErr: errors.ErrSkillTitleTaken,
 		},
 	}
 
@@ -409,7 +409,7 @@ func TestDeleteSkill(t *testing.T) {
 				return createTextSkill(t, fixture, other.ID, "del-foreign-skill", enums.SkillScopeUser).ID, ""
 			},
 			deleteBy: owner.ID,
-			wantErr:  errors.SkillNotFound,
+			wantErr:  errors.ErrSkillNotFound,
 			rowGone:  false,
 		},
 		{

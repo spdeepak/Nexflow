@@ -50,7 +50,7 @@ func TestDetectInterrupt_Positive(t *testing.T) {
 
 func TestDetectInterrupt_IgnoresPartial(t *testing.T) {
 	ev := buildInterruptEvent("call-1", "shorten_url", "hint")
-	ev.LLMResponse.Partial = true
+	ev.Partial = true
 
 	_, ok := detectInterrupt(ev)
 	require.False(t, ok, "partial streaming chunks must not trigger an interrupt")

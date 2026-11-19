@@ -38,7 +38,7 @@ type InterruptInfo struct {
 // Interrupts surface as an "adk_request_confirmation" FunctionCall whose id is listed in the event's LongRunningToolIDs;
 // streaming partial chunks carry the same ids and must be deduped separately by the caller.
 func detectInterrupt(event *session.Event) (InterruptInfo, bool) {
-	if event == nil || event.LLMResponse.Partial || len(event.LongRunningToolIDs) == 0 {
+	if event == nil || event.Partial || len(event.LongRunningToolIDs) == 0 {
 		return InterruptInfo{}, false
 	}
 	longRunning := make(map[string]struct{}, len(event.LongRunningToolIDs))

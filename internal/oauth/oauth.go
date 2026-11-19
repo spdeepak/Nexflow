@@ -62,10 +62,13 @@ func Discover(ctx context.Context, hc *http.Client, baseURL string) (*Metadata, 
 			continue
 		}
 		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		resp.Body.Close()
 		if err != nil {
 			lastErr = err
 			continue
+		}
+		err = resp.Body.Close()
+		if err != nil {
+			return nil, err
 		}
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("discovery endpoint %s returned %s", u, resp.Status)

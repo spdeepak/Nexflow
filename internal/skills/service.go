@@ -41,10 +41,10 @@ func NewService(querier Querier) Service {
 func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userID uuid.UUID) (schema.Skill, error) {
 	// Title is the skill name the runner exposes to ADK, so it must be unique.
 	if _, err := s.querier.GetSkillByTitle(ctx, arg.Title); err == nil {
-		return schema.Skill{}, errors.SkillTitleTaken
+		return schema.Skill{}, errors.ErrSkillTitleTaken
 	} else if err != sql.ErrNoRows {
 		slog.ErrorContext(ctx, "error checking skill title", "err", err)
-		return schema.Skill{}, errors.SkillCreationFailed
+		return schema.Skill{}, errors.ErrSkillCreationFailed
 	}
 
 	var metadata []byte
@@ -67,7 +67,7 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 		skillMDPath, err := resolveSkillStoragePath(arg.StorageUri)
 		if err != nil {
 			slog.ErrorContext(ctx, "invalid skill location for storage uri skill", "err", err, "storageUri", arg.StorageUri)
-			return schema.Skill{}, errors.SkillInvalidLocation
+			return schema.Skill{}, errors.ErrSkillInvalidLocation
 		}
 		storageUri = sql.NullString{String: skillMDPath, Valid: true}
 	} else if arg.StorageUri != nil {
@@ -92,7 +92,7 @@ func (s *service) CreateSkill(ctx context.Context, arg schema.SkillCreate, userI
 	skill, err := s.querier.CreateSkill(ctx, createSkillParams)
 	if err != nil {
 		slog.ErrorContext(ctx, "error creating skill", "err", err)
-		return schema.Skill{}, errors.SkillCreationFailed
+		return schema.Skill{}, errors.ErrSkillCreationFailed
 	}
 	return schema.Skill{
 		AgentCount:  0,
@@ -143,17 +143,17 @@ func (s *service) DeleteSkill(ctx context.Context, userId, id uuid.UUID) error {
 	skill, err := s.GetSkill(ctx, id)
 	if err != nil {
 		slog.ErrorContext(ctx, "couldn't find skill", "err", err)
-		return errors.SkillNotFound
+		return errors.ErrSkillNotFound
 	}
 	// Delete the row first so a no-op (someone else's skill) never destroys files.
 	res, err := s.querier.DeleteSkill(ctx, DeleteSkillParams{ID: id, UserID: userId})
 	if err != nil {
 		slog.ErrorContext(ctx, "error deleting skill", "err", err)
-		return errors.SkillDeletionFailed
+		return errors.ErrSkillDeletionFailed
 	}
 	affected, err := res.RowsAffected()
 	if err != nil || affected == 0 {
-		return errors.SkillNotFound
+		return errors.ErrSkillNotFound
 	}
 	// Only remove files Nexflow itself owns. Folder skills picked from
 	// elsewhere stay on disk, and synced global skills (global_skill = 1) are
@@ -162,7 +162,7 @@ func (s *service) DeleteSkill(ctx context.Context, userId, id uuid.UUID) error {
 	if skill.StorageUri.Valid && !skill.GlobalSkill && withinDir(skill.StorageUri.String, AppSkillsDir()) {
 		if err = os.Remove(skill.StorageUri.String); err != nil {
 			slog.ErrorContext(ctx, "error deleting skill file", "err", err, "filePath", skill.StorageUri.String)
-			return errors.SkillDeletionFailed
+			return errors.ErrSkillDeletionFailed
 		}
 	}
 	return nil

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
@@ -123,7 +124,10 @@ func (a *App) ConnectOAuthMCP(mcpID string) error {
 	if err != nil {
 		return err
 	}
-	defer cb.Close()
+	defer func(cb *oauth.CallbackServer) {
+		err = cb.Close()
+		slog.Error("Failed to close MCPs OAuth Call back server", "err", err.Error(), "redirectURL", cb.RedirectURL())
+	}(cb)
 
 	runtime.BrowserOpenURL(ctx, authURL)
 

@@ -28,7 +28,12 @@ func RunMigrations(cfg config.DBConfig) error {
 		slog.Error("Failed to open database", "error", err, "database", dbPath)
 		return err
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err = db.Close()
+		if err != nil {
+			slog.Error("Failed to close database connection", "error", err, "database", dbPath)
+		}
+	}(db)
 
 	if err := db.Ping(); err != nil {
 		slog.Error("Failed to connect to database", "error", err, "database", dbPath)
@@ -52,7 +57,12 @@ func RunMigrations(cfg config.DBConfig) error {
 		slog.Error("Failed to create migrate instance", "error", err, "database", dbPath)
 		return err
 	}
-	defer m.Close()
+	defer func(m *migrate.Migrate) {
+		err, _ := m.Close()
+		if err != nil {
+			slog.Error("Failed to close migrate connection", "error", err, "database", dbPath)
+		}
+	}(m)
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		slog.Error("Failed to run migrations up", "error", err)

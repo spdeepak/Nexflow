@@ -244,7 +244,7 @@ func (r *runner) runStage(ctx context.Context, adkAgent adkagent.Agent, sessionI
 				break
 			}
 		}
-		if !event.LLMResponse.Partial {
+		if !event.Partial {
 			if text := extractText(event); text != "" {
 				final = text
 			}
@@ -375,23 +375,47 @@ func (r *runner) resolveModel(ctx context.Context, apiAgent schema.AgentDetail) 
 }
 
 func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.AgentDetail) (*skilltoolset.SkillToolset, error) {
+	return skilltoolset.New(ctx, skilltoolset.Config{
+		Source: skillSource(ctx, apiAgent.Skills),
+	})
+}
+
+// skillSource classifies the agent's skills into ADK skill sources. Branching
+// is driven by the data present, not only content_type: the DB constraint
+// allows a row with NULL content as long as storage_uri is set (and vice
+// versa). Skills with neither usable content nor a valid storage path are
+// skipped with a warning — a broken skill row must not take down the run.
+func skillSource(ctx context.Context, skills []schema.Skill) skill.Source {
 	var inMemorySkills []InMemorySkill
 	fileSources := make(map[string]skill.Source)
 
-	for _, sk := range apiAgent.Skills {
-		if sk.ContentType == enums.SkillContentTypeStorageUri && sk.StorageUri != nil && *sk.StorageUri != "" {
+	for _, sk := range skills {
+		hasContent := sk.Content != nil && *sk.Content != ""
+		hasStorage := sk.StorageUri != nil && *sk.StorageUri != ""
+
+		switch {
+		case hasStorage && (sk.ContentType == enums.SkillContentTypeStorageUri || !hasContent):
 			skillDir := filepath.Dir(*sk.StorageUri)
 			parentDir := filepath.Dir(skillDir)
 
+			// os.DirFS never fails; a missing parent dir would surface later
+			// as a list_skills error for the whole agent, so skip it here.
+			if _, err := os.Stat(parentDir); err != nil {
+				slog.WarnContext(ctx, "skill storage path not found, skipping",
+					"skillId", sk.ID, "title", sk.Title, "storageUri", *sk.StorageUri, "error", err)
+				continue
+			}
 			if _, exists := fileSources[parentDir]; !exists {
 				fileSources[parentDir] = skill.NewFileSystemSource(os.DirFS(parentDir))
 			}
-		} else {
+		case hasContent:
 			inMemorySkills = append(inMemorySkills, InMemorySkill{
 				Name:         sk.Title,
 				Description:  *sk.Content,
 				Instructions: *sk.Content,
 			})
+		default:
+			slog.WarnContext(ctx, "skill has no content, skipping", "skillId", sk.ID, "title", sk.Title)
 		}
 	}
 
@@ -403,16 +427,10 @@ func (r *runner) resolveSkills(ctx context.Context, apiAgent schema.AgentDetail)
 		sources = append(sources, src)
 	}
 
-	var combinedSource skill.Source
-	if len(sources) > 0 {
-		combinedSource = skill.NewMergedSource(sources...)
-	} else {
-		combinedSource = NewStringToolSet()
+	if len(sources) == 0 {
+		return NewStringToolSet()
 	}
-
-	return skilltoolset.New(ctx, skilltoolset.Config{
-		Source: combinedSource,
-	})
+	return skill.NewMergedSource(sources...)
 }
 
 func (r *runner) resolveMCPs(ctx context.Context, apiAgent schema.AgentDetail) []tool.Toolset {

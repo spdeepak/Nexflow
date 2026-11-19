@@ -82,7 +82,7 @@ func (a *App) CreateSkillFromFile(params schema.SkillCreate, fileDataBase64 stri
 	if err != nil {
 		_ = os.Remove(filePath)
 		_ = a.DeleteSkill(skill.ID)
-		return errors.SkillCreationFailed
+		return errors.ErrSkillCreationFailed
 	}
 	return nil
 }

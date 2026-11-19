@@ -131,7 +131,7 @@ func (s *SessionStore) AppendEvent(ctx context.Context, cur session.Session, ev 
 		return fmt.Errorf("session and event are required")
 	}
 	// Partial (streaming chunk) events are not persisted.
-	if ev.LLMResponse.Partial {
+	if ev.Partial {
 		return nil
 	}
 	sessID, err := uuid.Parse(cur.ID())
@@ -156,7 +156,7 @@ func (s *SessionStore) AppendEvent(ctx context.Context, cur session.Session, ev 
 	role := eventRole(ev)
 
 	eventID, _ := uuid.NewV7()
-	tokenUsage, err := json.Marshal(ev.LLMResponse.UsageMetadata)
+	tokenUsage, err := json.Marshal(ev.UsageMetadata)
 	if err != nil {
 		slog.Error("Failed to marshal usage metadata", "event", ev, "error", err)
 		tokenUsage = json.RawMessage("{}")
@@ -172,7 +172,7 @@ func (s *SessionStore) AppendEvent(ctx context.Context, cur session.Session, ev 
 		Role:           role,
 		ContentJson:    contentJSON,
 		ActionsJson:    actionsJSON,
-		IsPartial:      ev.LLMResponse.Partial,
+		IsPartial:      ev.Partial,
 		IsFinal:        ev.IsFinalResponse(),
 		TokenUsage:     tokenUsage,
 		OutputJson:     marshalOutput(ev),
@@ -220,10 +220,10 @@ func sessionInvocation(ctx context.Context) uuid.UUID {
 
 // marshalContent serializes the event's content (the prompt/message parts).
 func marshalContent(ev *session.Event) (json.RawMessage, error) {
-	if ev.LLMResponse.Content == nil {
+	if ev.Content == nil {
 		return json.RawMessage{}, nil
 	}
-	return json.Marshal(ev.LLMResponse.Content)
+	return json.Marshal(ev.Content)
 }
 
 func marshalOutput(ev *session.Event) json.RawMessage {
@@ -246,8 +246,8 @@ func eventRole(ev *session.Event) enums.EventRole {
 	if ev.Author == "user" {
 		return enums.EventRoleUser
 	}
-	if ev.LLMResponse.Content != nil {
-		for _, part := range ev.LLMResponse.Content.Parts {
+	if ev.Content != nil {
+		for _, part := range ev.Content.Parts {
 			if part == nil {
 				continue
 			}

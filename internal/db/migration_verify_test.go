@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +39,12 @@ func TestRunMigrationsPathWithSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer verify.Close()
+	defer func(verify *sql.DB) {
+		err = verify.Close()
+		if err != nil {
+			slog.Error("Failed to close migrate connection", "error", err, "database", dbPath)
+		}
+	}(verify)
 
 	var n int
 	if err := verify.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='model_credentials'").Scan(&n); err != nil {

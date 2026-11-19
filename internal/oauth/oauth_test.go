@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -72,7 +73,12 @@ func TestCallbackServer_Success(t *testing.T) {
 
 	cs, err := StartCallbackServer("127.0.0.1:0", state)
 	require.NoError(t, err)
-	defer cs.Close()
+	defer func(cs *CallbackServer) {
+		err = cs.Close()
+		if err != nil {
+			slog.Error("Failed to close callback server", "error", err, "database", cs)
+		}
+	}(cs)
 
 	u, err := url.Parse(cs.RedirectURL())
 	require.NoError(t, err)
@@ -80,7 +86,7 @@ func TestCallbackServer_Success(t *testing.T) {
 
 	resp, err := http.Get(u.String())
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	res, err := cs.Wait(context.Background())
@@ -91,7 +97,7 @@ func TestCallbackServer_Success(t *testing.T) {
 func TestCallbackServer_StateMismatch(t *testing.T) {
 	cs, err := StartCallbackServer("127.0.0.1:0", "expected-state")
 	require.NoError(t, err)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	u, err := url.Parse(cs.RedirectURL())
 	require.NoError(t, err)
@@ -99,7 +105,7 @@ func TestCallbackServer_StateMismatch(t *testing.T) {
 
 	resp, err := http.Get(u.String())
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	_, err = cs.Wait(context.Background())
@@ -110,7 +116,7 @@ func TestCallbackServer_StateMismatch(t *testing.T) {
 func TestCallbackServer_ProviderError(t *testing.T) {
 	cs, err := StartCallbackServer("127.0.0.1:0", "state")
 	require.NoError(t, err)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	u, err := url.Parse(cs.RedirectURL())
 	require.NoError(t, err)
@@ -118,7 +124,7 @@ func TestCallbackServer_ProviderError(t *testing.T) {
 
 	resp, err := http.Get(u.String())
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	_, err = cs.Wait(context.Background())
 	require.Error(t, err)

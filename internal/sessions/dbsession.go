@@ -80,7 +80,7 @@ func dbEventFromRow(row events.Event) *session.Event {
 	if len(row.ContentJson) > 0 {
 		var content genai.Content
 		if err := json.Unmarshal(row.ContentJson, &content); err == nil {
-			ev.LLMResponse.Content = &content
+			ev.Content = &content
 		}
 	}
 	if len(row.ActionsJson) > 0 {

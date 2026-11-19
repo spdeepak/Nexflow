@@ -12,7 +12,7 @@ func GetFileContents(file []byte) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read file")
 	}
-	defer doc.Close()
+	defer func() { _ = doc.Close() }()
 
 	var content strings.Builder
 	for page := range doc.NumPage() {

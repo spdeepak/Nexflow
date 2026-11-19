@@ -67,7 +67,7 @@ func (s *service) CreateRootAgent(ctx context.Context, arg schema.AgentCreate) (
 	agent, err := s.querier.CreateRootAgent(ctx, params)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to create root agent", "error", err)
-		return Agent{}, errors.RootAgentCreateFailed
+		return Agent{}, errors.ErrRootAgentCreateFailed
 	}
 	slog.DebugContext(ctx, "Created root agent", "agent", agent)
 	return agent, nil
@@ -95,7 +95,7 @@ func (s *service) CreateSubAgent(ctx context.Context, arg schema.AgentCreate) (A
 	agent, err := s.querier.CreateSubAgent(ctx, params)
 	if err != nil {
 		slog.ErrorContext(ctx, "Failed to create sub agent", "error", err)
-		return Agent{}, errors.RootAgentCreateFailed
+		return Agent{}, errors.ErrRootAgentCreateFailed
 	}
 	slog.DebugContext(ctx, "Created sub agent", "agent", agent)
 	return agent, nil
